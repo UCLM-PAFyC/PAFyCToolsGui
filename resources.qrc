@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="logos">
+    <file>logos/PAFyCToolsGui_400.png</file>
+  </qresource>
+</RCC>

@@ -259,6 +259,7 @@ Makefile: PAFyCToolsGui.pro C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\win32-msvc
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\qt_config.prf \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\win32-msvc\qmake.conf \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\spec_post.prf \
+		.qmake.stash \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\exclusive_builds.prf \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\common\msvc-version.conf \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\toolchain.prf \
@@ -288,8 +289,8 @@ Makefile: PAFyCToolsGui.pro C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\win32-msvc
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Gui.prl \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Core.prl \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\qtmain.prl \
-		.qmake.stash \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\build_pass.prf \
+		resources.qrc \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Widgetsd.prl \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Guid.prl \
 		C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Cored.prl \
@@ -470,6 +471,7 @@ C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\qt_functions.prf:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\qt_config.prf:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\win32-msvc\qmake.conf:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\spec_post.prf:
+.qmake.stash:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\exclusive_builds.prf:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\common\msvc-version.conf:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\toolchain.prf:
@@ -499,8 +501,8 @@ C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Widgets.prl:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Gui.prl:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Core.prl:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\qtmain.prl:
-.qmake.stash:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\mkspecs\features\build_pass.prf:
+resources.qrc:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Widgetsd.prl:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Guid.prl:
 C:\Qt\Qt5.15.2\5.15.2\msvc2015_64\lib\Qt5Cored.prl:
