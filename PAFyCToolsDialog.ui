@@ -25,7 +25,7 @@
        <item row="0" column="0">
         <widget class="QPushButton" name="qgisPathPushButton">
          <property name="text">
-          <string>Ruta de instalación de QGIS:</string>
+          <string>QGIS path:</string>
          </property>
         </widget>
        </item>
@@ -45,7 +45,7 @@
           </size>
          </property>
          <property name="text">
-          <string>Ruta principal para los resultados:</string>
+          <string>Output path:</string>
          </property>
         </widget>
        </item>
@@ -79,7 +79,7 @@
        <item>
         <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>Selección de la submisión:</string>
+          <string>Select command:</string>
          </property>
         </widget>
        </item>
@@ -96,7 +96,7 @@
        <item>
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Selección de un subproceso de la submisión:</string>
+          <string>Select subcommand:</string>
          </property>
         </widget>
        </item>
@@ -127,21 +127,21 @@
             </size>
            </property>
            <property name="text">
-            <string>Ayuda</string>
+            <string>Help</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="parametersPushButton">
            <property name="text">
-            <string>Selección de parámetros</string>
+            <string>Select parameters</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="processPushButton">
            <property name="text">
-            <string>Proceso</string>
+            <string>Process</string>
            </property>
           </widget>
          </item>

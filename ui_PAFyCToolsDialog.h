@@ -161,14 +161,14 @@ public:
     void retranslateUi(QDialog *PAFyCToolsDialog)
     {
         PAFyCToolsDialog->setWindowTitle(QCoreApplication::translate("PAFyCToolsDialog", "PAFyC Tools GUI", nullptr));
-        qgisPathPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Ruta de instalaci\303\263n de QGIS:", nullptr));
-        outputPathPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Ruta principal para los resultados:", nullptr));
+        qgisPathPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "QGIS path:", nullptr));
+        outputPathPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Output path:", nullptr));
         label->setText(QString());
-        label_2->setText(QCoreApplication::translate("PAFyCToolsDialog", "Selecci\303\263n de la submisi\303\263n:", nullptr));
-        label_3->setText(QCoreApplication::translate("PAFyCToolsDialog", "Selecci\303\263n de un subproceso de la submisi\303\263n:", nullptr));
-        helpPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Ayuda", nullptr));
-        parametersPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Selecci\303\263n de par\303\241metros", nullptr));
-        processPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Proceso", nullptr));
+        label_2->setText(QCoreApplication::translate("PAFyCToolsDialog", "Select command:", nullptr));
+        label_3->setText(QCoreApplication::translate("PAFyCToolsDialog", "Select subcommand:", nullptr));
+        helpPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Help", nullptr));
+        parametersPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Select parameters", nullptr));
+        processPushButton->setText(QCoreApplication::translate("PAFyCToolsDialog", "Process", nullptr));
     } // retranslateUi
 
 };

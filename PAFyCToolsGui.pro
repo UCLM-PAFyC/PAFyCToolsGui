@@ -38,15 +38,30 @@ SOURCES += \
     main.cpp
 
 HEADERS += \
-    PAFyCToolsDialog.h
+    PAFyCToolsDialog.h \
+    PAFyCToolsGuiDefinitions.h
 
 FORMS += \
     PAFyCToolsDialog.ui
 
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
+LIBS += -llibParameters
+LIBS += -llibProcessTools
+debug{
+    DESTDIR = $$DESTDIR_DEBUG
+    LIBS += -L$$DESTDIR_DEBUG
+#    LIBS += $$QUAZIPLIB_PATH\lib\quazip1-qt5d.lib
+}else{
+    DESTDIR = $$DESTDIR_RELEASE
+    LIBS += -L$$DESTDIR_RELEASE
+#    LIBS += $$QUAZIPLIB_PATH\lib\quazip1-qt5.lib
+}
+
+## Default rules for deployment.
+#qnx: target.path = /tmp/$${TARGET}/bin
+#else: unix:!android: target.path = /opt/$${TARGET}/bin
+#!isEmpty(target.path): INSTALLS += target
 
 RESOURCES += \
     resources.qrc
+
+RC_FILE = PAFyCToolsGui.rc

@@ -33,7 +33,7 @@ IDC           = idc
 IDL           = midl
 ZIP           = zip -r -9
 DEF_FILE      = 
-RES_FILE      = 
+RES_FILE      = PAFyCToolsGui.res
 SED           = $(QMAKE) -install sed
 MOVE          = move
 SUBTARGETS    =  \
@@ -516,11 +516,11 @@ make_first: debug-make_first release-make_first  FORCE
 all: debug-all release-all  FORCE
 clean: debug-clean release-clean  FORCE
 	-$(DEL_FILE) PAFyCToolsGui.vc.pdb
-	-$(DEL_FILE) PAFyCToolsGui.ilk
-	-$(DEL_FILE) PAFyCToolsGui.idb
+	-$(DEL_FILE) ..\..\..\build_osgeo4w\debug\PAFyCToolsGui.ilk
+	-$(DEL_FILE) ..\..\..\build_osgeo4w\debug\PAFyCToolsGui.idb
 distclean: debug-distclean release-distclean  FORCE
 	-$(DEL_FILE) Makefile
-	-$(DEL_FILE) .qmake.stash PAFyCToolsGui.pdb
+	-$(DEL_FILE) .qmake.stash ..\..\..\build_osgeo4w\debug\PAFyCToolsGui.pdb
 
 debug-mocclean:
 	@set MAKEFLAGS=$(MAKEFLAGS)
