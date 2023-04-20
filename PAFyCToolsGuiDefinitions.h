@@ -20,9 +20,19 @@
 #define PAFYCTOOLSGUI_NO_COMBO_SELECT " ... "
 
 #define PAFYCTOOLSGUI_COMMAND_PLPPC "Plants location from photogrammetric point cloud"
-#define PAFYCTOOLSGUI_COMMAND_PLPPC_HELP_PDF_FILE "PlantsLocationFromPhotogrammetricPointCloud.pdf"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP "Plants location from photogrammetric point cloud: 1. Preprocessing"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_HELP_PDF_FILE "PlantsLocationFromPhotogrammetricPointCloud_1_Preprocessing.pdf"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE "1_plppc_preprocessing.bat"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_LASTOOLS_PATH "PLPPC_PP_LAStoolsPath"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_POINT_CLOUD_FILE "PLPPC_PP_PointCloudFile"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_ROI_SHAPEFILE "PLPPC_PP_ROIShapeFile"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_CRS_EPSG_CODE "PLPPC_PP_CRS_EPSG_CODE"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PL "Plants location from photogrammetric point cloud: 2. Plants location"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PL_HELP_PDF_FILE "PlantsLocationFromPhotogrammetricPointCloud_2_PlantsLocation.pdf"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PL_PROCESS_FILE "2_plppc_plants_location.bat"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PL_TAG_INPUT_PATH "PLPPC_PL_InputPath"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PL_TAG_CRS_EPSG_CODE "PLPPC_PL_CRS_EPSG_CODE"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PL_TAG_PROJECT_NAME "PLPPC_PL_PROJECT_NAME"
 
 
 #endif // PAFYCTOOLSGUIDEFINITIONS_H

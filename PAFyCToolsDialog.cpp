@@ -37,6 +37,16 @@ PAFyCToolsDialog::PAFyCToolsDialog(QWidget *parent) :
 
 PAFyCToolsDialog::~PAFyCToolsDialog()
 {
+    if(mPtrParametersManager!=NULL)
+    {
+        delete(mPtrParametersManager);
+        mPtrParametersManager=NULL;
+    }
+//    if(mPtrProgressExternalProcessDialog!=NULL)
+//    {
+//        delete(mPtrProgressExternalProcessDialog);
+//        mPtrProgressExternalProcessDialog=NULL;
+//    }
     delete ui;
 }
 
@@ -113,8 +123,8 @@ bool PAFyCToolsDialog::initialize(QString &strError)
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
-//    mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back();
-//    mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back();
+    mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PP);
+    mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PL);
 
     ui->commandComboBox->addItem(PAFYCTOOLSGUI_NO_COMBO_SELECT);
     for(int i=0;i<mCommands.size();i++)
@@ -125,6 +135,302 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     ui->subCommandComboBox->setEnabled(false);
 
     return(true);
+}
+
+bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
+                                        QString &outputPath,
+                                        QString &strError)
+{
+    QString command=PAFYCTOOLSGUI_COMMAND_PLPPC_PP;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,pointCloudFileName,roiShapefileName,inputPath,latsShapefile,parameterCode,lastoolsPath,lidarFilesPath;
+    int epsgCode;
+    int intValue;
+    double dblValue;
+    bool okToNumber;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_POINT_CLOUD_FILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    pointCloudFileName=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_ROI_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    roiShapefileName=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_CRS_EPSG_CODE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    int crsEpsgCode,verticalCrsEpsgCode=-1;
+    if(strValue.contains("+"))
+    {
+        QStringList strCrsValues=strValue.split("+");
+        if(strCrsValues.size()!=2)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nInvalid value for compound crs: %1\nin file:\n%2")
+                    .arg(parameterCode).arg(strValue).arg(mPtrParametersManager->getFileName());
+            return(false);
+        }
+        strValue=strCrsValues[0].trimmed();
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        crsEpsgCode=intValue;
+        strValue=strCrsValues[1].trimmed();
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        verticalCrsEpsgCode=intValue;
+    }
+    else
+    {
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        crsEpsgCode=intValue;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_LASTOOLS_PATH;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    lastoolsPath=strValue;
+    if(!auxDir.exists(lastoolsPath))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists path:\n%2")
+                .arg(parameterCode).arg(lastoolsPath);
+        return(false);
+    }
+
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nHa fallado la eliminación del fichero:\n%1").arg(processFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nHa fallado la apertura del fichero:\n%1").arg(processFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+/*
+echo off
+set PATH=%PATH%;C:\lastools2022\bin;
+set PROCESS_PATH=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\process
+set INPUT_POINT_CLOUD_FILE=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\export\20220426_Tarazona_vid_hElip.laz
+set INPUT_ROI_SHAPEFILE=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\roi\roi_25830.shp
+set OUTPUT_POINT_CLOUD_CLIPPED_FILE=%PROCESS_PATH%\20220426_Tarazona_vid_hElip_clipped.laz
+set TILE_SIZE=10
+set TILE_BUFFER=1
+set GROUND_STEP_SIZE=0.1
+set CORES=8
+set LASTHIN_ADAPTATIVE_2D=0.2
+set LASTHIN_ADAPTATIVE_H=0.2
+set LASNOISE_STEP_2D=0.05
+set LASNOISE_STEP_H=0.05
+set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10
+set VINE_H_IGNORE_FOOT=0.1
+set VINE_H_TRUNK_MINIMUM_HEIGHT=0.1
+set VINE_H_TRUNK_MAXIMUM_HEIGHT=0.4
+set VINE_H_ARMS_MINIMUM_HEIGHT=0.4
+set VINE_H_ARMS_MAXIMUM_HEIGHT=1.2
+set VINE_RASTER_STEP=0.05
+set VINE_RASTER_FILE_NAME=vines.tif
+set VINE_RASTER_TRUNK_STEP=0.05
+set VINE_RASTER_TRUNK_FILE_NAME=vines_trunk.tif
+REM lasclip64 -v -i %INPUT_POINT_CLOUD_FILE% ^
+          REM -poly %INPUT_ROI_SHAPEFILE% ^
+          REM -o %OUTPUT_POINT_CLOUD_CLIPPED_FILE%
+:: create temporary tile directory
+rmdir temp_tiles /s /q
+mkdir temp_tiles
+:: create a temporary and reversible tiling with tile size 500 and buffer 50
+lastile -v -i %OUTPUT_POINT_CLOUD_CLIPPED_FILE% ^
+        -reversible -tile_size %TILE_SIZE% -buffer %TILE_BUFFER% ^
+        -o temp_tiles\tile.laz -olaz
+:: create another temporary tile directory
+rmdir temp_tiles_ground /s /q
+mkdir temp_tiles_ground
+:: run lasground on all temporary tiles on 3 cores
+lasground_new -v -i temp_tiles\tile*.laz ^
+          -step %GROUND_STEP_SIZE% -coarse ^
+          -odir temp_tiles_ground -olaz ^
+          -cores %CORES%
+:: delete temporary tile directory
+rmdir temp_tiles /s /q
+rmdir temp_tiles_ground_thinned /s /q
+mkdir temp_tiles_ground_thinned
+:: run lasthin on all temporary tiles on 3 cores
+lasthin64 -v -i temp_tiles_ground\tile*.laz ^
+          -ignore_class 1 -adaptive %LASTHIN_ADAPTATIVE_2D% %LASTHIN_ADAPTATIVE_H% ^
+          -odir temp_tiles_ground_thinned -olaz ^
+          -cores %CORES%
+:: delete temporary tile directory
+rmdir temp_tiles_ground /s /q
+rmdir temp_tiles_ground_thinned_denoise /s /q
+mkdir temp_tiles_ground_thinned_denoise
+:: run lasthin on all temporary tiles on 3 cores
+lasnoise64 -v -i temp_tiles_ground_thinned\tile*.laz ^
+          -ignore_class 2 -step_xy %LASNOISE_STEP_2D% -step_z %LASNOISE_STEP_H% -remove_noise -isolated %LASNOISE_MINIMUN_NUMBER_OF_POINTS% ^
+          -odir temp_tiles_ground_thinned_denoise -olaz ^
+          -cores %CORES%
+:: delete temporary tile directory
+rmdir temp_tiles_ground_thinned /s /q
+rmdir temp_tiles_ground_thinned_denoise_height /s /q
+mkdir temp_tiles_ground_thinned_denoise_height
+:: run lasthin on all temporary tiles on 3 cores
+lasheight64 -v -i temp_tiles_ground_thinned_denoise\tile*.laz ^
+          -ignore_class 2 -classify_below %VINE_H_IGNORE_FOOT% 0 ^
+          -classify_between %VINE_H_TRUNK_MINIMUM_HEIGHT% %VINE_H_TRUNK_MAXIMUM_HEIGHT% 3 ^
+          -classify_between %VINE_H_ARMS_MINIMUM_HEIGHT% %VINE_H_ARMS_MAXIMUM_HEIGHT% 4 ^
+          -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^
+          -odir temp_tiles_ground_thinned_denoise_height -olaz ^
+          -cores %CORES%
+:: recreate ground classified huge LAS / LAZ file
+rmdir temp_tiles_ground_thinned_denoise /s /q
+lastile -i temp_tiles_ground_thinned_denoise_height\tile*.laz ^
+        -reverse_tiling ^
+        -o %OUTPUT_POINT_CLOUD_CLIPPED_FILE% -odix _ground -olaz
+:: delete other temporary tile directory
+rmdir temp_tiles_ground_thinned_denoise_height /s /q
+lasgrid64 -v -i *_ground.laz ^
+          -keep_class 3 4 -step %VINE_RASTER_STEP% -counter_16bit ^
+          -o %VINE_RASTER_FILE_NAME%
+lasgrid64 -v -i *_ground.laz ^
+          -keep_class 3 -step %VINE_RASTER_TRUNK_STEP% -counter_16bit ^
+          -o %VINE_RASTER_TRUNK_FILE_NAME%
+*/
+    strOut<<"echo off"<<"\n";
+    strOut<<"set LASTOOLS_PATH="<<lastoolsPath<<"\n";
+    strOut<<"set PNOA_LIDAR_FILES_PATH="<<lidarFilesPath<<"\n";
+
+
+    file.close();
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+//    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+    return(true);
+}
+
+bool PAFyCToolsDialog::process_plppc_pl(QString &qgisPath,
+                                        QString &outputPath,
+                                        QString &strError)
+{
+
+    return(true);
+}
+
+bool PAFyCToolsDialog::removeDir(QString dirName, bool onlyContent)
+{
+    bool result = true;
+    QDir dir(dirName);
+    if (dir.exists(dirName))
+    {
+        Q_FOREACH(QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
+            if (info.isDir())
+            {
+                result = removeDir(info.absoluteFilePath());
+            }
+            else
+            {
+                result = QFile::remove(info.absoluteFilePath());
+            }
+            if (!result)
+            {
+                return result;
+            }
+        }
+        if(!onlyContent)
+        {
+            result = dir.rmdir(dirName);
+        }
+    }
+    return result;
 }
 
 void PAFyCToolsDialog::on_qgisPathPushButton_clicked()
@@ -230,14 +536,14 @@ void PAFyCToolsDialog::on_helpPushButton_clicked()
         }
     }
     QString pdfFileName=qApp->applicationDirPath() + PAFYCTOOLSGUI_DOCS_PATH;
-//    if(command.compare(CAMTIMA_COMMAND_DPT,Qt::CaseInsensitive)==0)
-//    {
-//        pdfFileName+=CAMTIMA_COMMAND_DPT_HELP_PDF_FILE;
-//    }
-//    else if(command.compare(CAMTIMA_COMMAND_DMH,Qt::CaseInsensitive)==0)
-//    {
-//        pdfFileName+=CAMTIMA_COMMAND_DMH_HELP_PDF_FILE;
-//    }
+    if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PP,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_HELP_PDF_FILE;
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PL,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_PLPPC_PL_HELP_PDF_FILE;
+    }
     if(QFile::exists(pdfFileName))
     {
         QDesktopServices::openUrl(QUrl::fromLocalFile(pdfFileName));
@@ -507,27 +813,27 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
         }
     }
     QString strAuxError;
-//    if(command.compare(CAMTIMA_COMMAND_DPT,Qt::CaseInsensitive)==0)
-//    {
-//        if(!process_dpt(qgisPath,outputPath,strAuxError))
-//        {
-//            QString title=PAFYCTOOLSGUI_TITLE;
-//            QString msg=QObject::tr("En el proceso:\n%1\nse ha producido el error:\n%2")
-//                    .arg(command).arg(strAuxError);
-//            QMessageBox::information(this,title,msg);
-//            return;
-//        }
-//    }
-//    else if(command.compare(CAMTIMA_COMMAND_DMH,Qt::CaseInsensitive)==0)
-//    {
-//        if(!process_dmh(qgisPath,outputPath,strAuxError))
-//        {
-//            QString title=CAMTIMA_TITLE;
-//            QString msg=QObject::tr("En el proceso:\n%1\nse ha producido el error:\n%2")
-//                    .arg(command).arg(strAuxError);
-//            QMessageBox::information(this,title,msg);
-//            return;
-//        }
-//    }
+    if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PP,Qt::CaseInsensitive)==0)
+    {
+        if(!process_plppc_pp(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PL,Qt::CaseInsensitive)==0)
+    {
+        if(!process_plppc_pl(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
 }
 

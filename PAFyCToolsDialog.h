@@ -40,6 +40,14 @@ private slots:
 
 private:
     bool initialize(QString& strError);
+    bool process_plppc_pp(QString& qgisPath,
+                          QString& outputPath,
+                          QString& strError);
+    bool process_plppc_pl(QString& qgisPath,
+                          QString& outputPath,
+                          QString& strError);
+    bool removeDir(QString dirName,
+                   bool onlyContent=false);
 
 private:
     Ui::PAFyCToolsDialog *ui;
