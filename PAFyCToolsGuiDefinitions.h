@@ -11,6 +11,7 @@
 #define PAFYCTOOLSGUI_SETTINGS_TAG_QGIS_PATH "qgis_path"
 #define PAFYCTOOLSGUI_SETTINGS_TAG_OUTPUT_PATH "output_path"
 #define PAFYCTOOLSGUI_DOCS_PATH "/docs/"
+#define PAFYCTOOLSGUI_LASINFO_FILE  "lasinfo.exe"
 
 #define PAFYCTOOLSGUI_QGIS_BAT_ENVIRONMENT "/bin/o4w_env.bat"
 

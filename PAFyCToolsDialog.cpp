@@ -269,6 +269,16 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
                 .arg(parameterCode).arg(lastoolsPath);
         return(false);
     }
+    QString lasinfoFileName=lastoolsPath+"/"+PAFYCTOOLSGUI_LASINFO_FILE;
+    if(!QFile::exists(lasinfoFileName))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(lasinfoFileName);
+        strError+=QObject::tr("\nWrong LAStools path:\n%1")
+                .arg(lastoolsPath);
+        return(false);
+    }
 
     QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE;
     if(QFile::exists(processFileName))
@@ -276,7 +286,7 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         if(!QFile::remove(processFileName))
         {
             strError=functionName;
-            strError+=QObject::tr("\nHa fallado la eliminación del fichero:\n%1").arg(processFileName);
+            strError+=QObject::tr("\nError removing file:\n%1").arg(processFileName);
             return(false);
         }
     }
@@ -284,7 +294,7 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
     if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
     {
         strError=functionName;
-        strError+=QObject::tr("\nHa fallado la apertura del fichero:\n%1").arg(processFileName);
+        strError+=QObject::tr("\nError opening file:\n%1").arg(processFileName);
         return(false);
     }
     QTextStream strOut(&file);
@@ -376,24 +386,108 @@ lasgrid64 -v -i *_ground.laz ^
           -o %VINE_RASTER_TRUNK_FILE_NAME%
 */
     strOut<<"echo off"<<"\n";
-    strOut<<"set LASTOOLS_PATH="<<lastoolsPath<<"\n";
-    strOut<<"set PNOA_LIDAR_FILES_PATH="<<lidarFilesPath<<"\n";
-
-
-    file.close();
-    QStringList parameters;
-    mStrExecution=processFileName;
-    if(mPtrProgressExternalProcessDialog==NULL)
+    strOut<<"set PATH=%PATH%;\""<<lastoolsPath<<"\"\n";
+    strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+    strOut<<"set INPUT_POINT_CLOUD_FILE="<<pointCloudFileName<<"\n";
+    strOut<<"set INPUT_ROI_SHAPEFILE="<<roiShapefileName<<"\n";
+//    QString pointCloudClippedFileName=QFileInfo(pointCloudFileName).absolutePath();
+    QString pointCloudClippedFileName=outputPath;
+    pointCloudClippedFileName+="/";
+    QString pointCloudClippedFileNameWithoutPath=QFileInfo(pointCloudFileName).completeBaseName();
+    pointCloudClippedFileNameWithoutPath+="_clipped.laz";
+    pointCloudClippedFileName+=pointCloudClippedFileNameWithoutPath;
+    if(QFile::exists(pointCloudClippedFileName))
     {
-        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
-        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+        if(!QFile::remove(pointCloudClippedFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing file:\n%1").arg(pointCloudClippedFileName);
+            return(false);
+        }
     }
-    mPtrProgressExternalProcessDialog->setDialogTitle(command);
-//    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+    strOut<<"set OUTPUT_POINT_CLOUD_CLIPPED_FILE=%PROCESS_PATH%\\"<<pointCloudClippedFileNameWithoutPath<<"\n";
+    strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+    strOut<<"set TILE_SIZE=10"<<"\n";
+    strOut<<"set TILE_BUFFER=1"<<"\n";
+    strOut<<"set GROUND_STEP_SIZE=0.1"<<"\n";
+    strOut<<"set CORES=8"<<"\n";
+    strOut<<"set LASTHIN_ADAPTATIVE_2D=0.2"<<"\n";
+    strOut<<"set LASTHIN_ADAPTATIVE_H=0.2"<<"\n";
+    strOut<<"set LASNOISE_STEP_2D=0.05"<<"\n";
+    strOut<<"set LASNOISE_STEP_H=0.05"<<"\n";
+    strOut<<"set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10"<<"\n";
+    strOut<<"set VINE_H_IGNORE_FOOT=0.1"<<"\n";
+    strOut<<"set VINE_H_TRUNK_MINIMUM_HEIGHT=0.1"<<"\n";
+    strOut<<"set VINE_H_TRUNK_MAXIMUM_HEIGHT=0.4"<<"\n";
+    strOut<<"set VINE_H_ARMS_MINIMUM_HEIGHT=0.4"<<"\n";
+    strOut<<"set VINE_H_ARMS_MAXIMUM_HEIGHT=1.2"<<"\n";
+    strOut<<"set VINE_RASTER_STEP=0.05"<<"\n";
+    strOut<<"set VINE_RASTER_FILE_NAME=vines.tif"<<"\n";
+    strOut<<"set VINE_RASTER_TRUNK_STEP=0.05"<<"\n";
+    strOut<<"set VINE_RASTER_TRUNK_FILE_NAME=vines_trunk.tif"<<"\n";
+    strOut<<"lasclip64 -v -i \"%INPUT_POINT_CLOUD_FILE%\" ^"<<"\n";
+    strOut<<"          -poly \"%INPUT_ROI_SHAPEFILE%\" ^"<<"\n";
+    strOut<<"          -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\""<<"\n";
+    strOut<<"rmdir temp_tiles /s /q"<<"\n";
+    strOut<<"mkdir temp_tiles"<<"\n";
+    strOut<<"lastile -v -i \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\" ^"<<"\n";
+    strOut<<"        -reversible -tile_size %TILE_SIZE% -buffer %TILE_BUFFER% ^"<<"\n";
+    strOut<<"        -o temp_tiles\\tile.laz -olaz"<<"\n";
+    strOut<<"rmdir temp_tiles_ground /s /q"<<"\n";
+    strOut<<"mkdir temp_tiles_ground"<<"\n";
+    strOut<<"lasground_new -v -i temp_tiles\\tile*.laz ^"<<"\n";
+    strOut<<"          -step %GROUND_STEP_SIZE% -coarse ^"<<"\n";
+    strOut<<"          -odir temp_tiles_ground -olaz ^"<<"\n";
+    strOut<<"          -cores %CORES%"<<"\n";
+    strOut<<"rmdir temp_tiles /s /q"<<"\n";
+    strOut<<"rmdir temp_tiles_ground_thinned /s /q"<<"\n";
+    strOut<<"mkdir temp_tiles_ground_thinned"<<"\n";
+    strOut<<"lasthin64 -v -i temp_tiles_ground\\tile*.laz ^"<<"\n";
+    strOut<<"          -ignore_class 1 -adaptive %LASTHIN_ADAPTATIVE_2D% %LASTHIN_ADAPTATIVE_H% ^"<<"\n";
+    strOut<<"          -odir temp_tiles_ground_thinned -olaz ^"<<"\n";
+    strOut<<"          -cores %CORES%"<<"\n";
+    strOut<<"rmdir temp_tiles_ground /s /q"<<"\n";
+    strOut<<"rmdir temp_tiles_ground_thinned_denoise /s /q"<<"\n";
+    strOut<<"mkdir temp_tiles_ground_thinned_denoise"<<"\n";
+    strOut<<"lasnoise64 -v -i temp_tiles_ground_thinned\\tile*.laz ^"<<"\n";
+    strOut<<"          -ignore_class 2 -step_xy %LASNOISE_STEP_2D% -step_z %LASNOISE_STEP_H% -remove_noise -isolated %LASNOISE_MINIMUN_NUMBER_OF_POINTS% ^"<<"\n";
+    strOut<<"          -odir temp_tiles_ground_thinned_denoise -olaz ^"<<"\n";
+    strOut<<"          -cores %CORES%"<<"\n";
+    strOut<<"rmdir temp_tiles_ground_thinned /s /q"<<"\n";
+    strOut<<"rmdir temp_tiles_ground_thinned_denoise_height /s /q"<<"\n";
+    strOut<<"mkdir temp_tiles_ground_thinned_denoise_height"<<"\n";
+    strOut<<"lasheight64 -v -i temp_tiles_ground_thinned_denoise\\tile*.laz ^"<<"\n";
+    strOut<<"          -ignore_class 2 -classify_below %VINE_H_IGNORE_FOOT% 0 ^"<<"\n";
+    strOut<<"          -classify_between %VINE_H_TRUNK_MINIMUM_HEIGHT% %VINE_H_TRUNK_MAXIMUM_HEIGHT% 3 ^"<<"\n";
+    strOut<<"          -classify_between %VINE_H_ARMS_MINIMUM_HEIGHT% %VINE_H_ARMS_MAXIMUM_HEIGHT% 4 ^"<<"\n";
+    strOut<<"          -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^"<<"\n";
+    strOut<<"          -odir temp_tiles_ground_thinned_denoise_height -olaz ^"<<"\n";
+    strOut<<"          -cores %CORES%"<<"\n";
+    strOut<<"rmdir temp_tiles_ground_thinned_denoise /s /q"<<"\n";
+    strOut<<"lastile -i temp_tiles_ground_thinned_denoise_height\\tile*.laz ^"<<"\n";
+    strOut<<"        -reverse_tiling ^"<<"\n";
+    strOut<<"        -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\" -odix _ground -olaz"<<"\n";
+    strOut<<"rmdir temp_tiles_ground_thinned_denoise_height /s /q"<<"\n";
+    strOut<<"lasgrid64 -v -i *_ground.laz ^"<<"\n";
+    strOut<<"          -keep_class 3 4 -step %VINE_RASTER_STEP% -counter_16bit ^"<<"\n";
+    strOut<<"          -o %VINE_RASTER_FILE_NAME%"<<"\n";
+    strOut<<"lasgrid64 -v -i *_ground.laz ^"<<"\n";
+    strOut<<"          -keep_class 3 -step %VINE_RASTER_TRUNK_STEP% -counter_16bit ^"<<"\n";
+    strOut<<"          -o %VINE_RASTER_TRUNK_FILE_NAME%"<<"\n";
+    file.close();
+//    QStringList parameters;
+//    mStrExecution=processFileName;
+//    if(mPtrProgressExternalProcessDialog==NULL)
+//    {
+//        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+//        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+//    }
+//    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+////    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
 
-    mInitialDateTime=QDateTime::currentDateTime();
-    mProgressExternalProcessTitle=command;
-    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+//    mInitialDateTime=QDateTime::currentDateTime();
+//    mProgressExternalProcessTitle=command;
+//    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
     return(true);
 }
 
