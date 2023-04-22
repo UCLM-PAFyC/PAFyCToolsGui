@@ -281,200 +281,355 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
     }
 
     QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE;
-    if(QFile::exists(processFileName))
     {
-        if(!QFile::remove(processFileName))
+        if(QFile::exists(processFileName))
+        {
+            if(!QFile::remove(processFileName))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(processFileName);
+                return(false);
+            }
+        }
+        QFile file(processFileName);
+        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
         {
             strError=functionName;
-            strError+=QObject::tr("\nError removing file:\n%1").arg(processFileName);
+            strError+=QObject::tr("\nError opening file:\n%1").arg(processFileName);
             return(false);
         }
+        QTextStream strOut(&file);
+        strOut<<"echo off"<<"\n";
+        strOut<<"set OUTPUT_PATH="<<outputPath<<"\n";
+        strOut<<"call \"%OUTPUT_PATH%/"<<PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE_LASTOOLS<<"\"\n";
+        strOut<<"call \"%OUTPUT_PATH%/"<<PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE_GDAL<<"\"\n";
+        file.close();
     }
-    QFile file(processFileName);
-    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+
+    QString processFileNameLastools=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE_LASTOOLS;
     {
-        strError=functionName;
-        strError+=QObject::tr("\nError opening file:\n%1").arg(processFileName);
-        return(false);
-    }
-    QTextStream strOut(&file);
-/*
-echo off
-set PATH=%PATH%;C:\lastools2022\bin;
-set PROCESS_PATH=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\process
-set INPUT_POINT_CLOUD_FILE=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\export\20220426_Tarazona_vid_hElip.laz
-set INPUT_ROI_SHAPEFILE=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\roi\roi_25830.shp
-set OUTPUT_POINT_CLOUD_CLIPPED_FILE=%PROCESS_PATH%\20220426_Tarazona_vid_hElip_clipped.laz
-set TILE_SIZE=10
-set TILE_BUFFER=1
-set GROUND_STEP_SIZE=0.1
-set CORES=8
-set LASTHIN_ADAPTATIVE_2D=0.2
-set LASTHIN_ADAPTATIVE_H=0.2
-set LASNOISE_STEP_2D=0.05
-set LASNOISE_STEP_H=0.05
-set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10
-set VINE_H_IGNORE_FOOT=0.1
-set VINE_H_TRUNK_MINIMUM_HEIGHT=0.1
-set VINE_H_TRUNK_MAXIMUM_HEIGHT=0.4
-set VINE_H_ARMS_MINIMUM_HEIGHT=0.4
-set VINE_H_ARMS_MAXIMUM_HEIGHT=1.2
-set VINE_RASTER_STEP=0.05
-set VINE_RASTER_FILE_NAME=vines.tif
-set VINE_RASTER_TRUNK_STEP=0.05
-set VINE_RASTER_TRUNK_FILE_NAME=vines_trunk.tif
-REM lasclip64 -v -i %INPUT_POINT_CLOUD_FILE% ^
-          REM -poly %INPUT_ROI_SHAPEFILE% ^
-          REM -o %OUTPUT_POINT_CLOUD_CLIPPED_FILE%
-:: create temporary tile directory
-rmdir temp_tiles /s /q
-mkdir temp_tiles
-:: create a temporary and reversible tiling with tile size 500 and buffer 50
-lastile -v -i %OUTPUT_POINT_CLOUD_CLIPPED_FILE% ^
-        -reversible -tile_size %TILE_SIZE% -buffer %TILE_BUFFER% ^
-        -o temp_tiles\tile.laz -olaz
-:: create another temporary tile directory
-rmdir temp_tiles_ground /s /q
-mkdir temp_tiles_ground
-:: run lasground on all temporary tiles on 3 cores
-lasground_new -v -i temp_tiles\tile*.laz ^
-          -step %GROUND_STEP_SIZE% -coarse ^
-          -odir temp_tiles_ground -olaz ^
-          -cores %CORES%
-:: delete temporary tile directory
-rmdir temp_tiles /s /q
-rmdir temp_tiles_ground_thinned /s /q
-mkdir temp_tiles_ground_thinned
-:: run lasthin on all temporary tiles on 3 cores
-lasthin64 -v -i temp_tiles_ground\tile*.laz ^
-          -ignore_class 1 -adaptive %LASTHIN_ADAPTATIVE_2D% %LASTHIN_ADAPTATIVE_H% ^
-          -odir temp_tiles_ground_thinned -olaz ^
-          -cores %CORES%
-:: delete temporary tile directory
-rmdir temp_tiles_ground /s /q
-rmdir temp_tiles_ground_thinned_denoise /s /q
-mkdir temp_tiles_ground_thinned_denoise
-:: run lasthin on all temporary tiles on 3 cores
-lasnoise64 -v -i temp_tiles_ground_thinned\tile*.laz ^
-          -ignore_class 2 -step_xy %LASNOISE_STEP_2D% -step_z %LASNOISE_STEP_H% -remove_noise -isolated %LASNOISE_MINIMUN_NUMBER_OF_POINTS% ^
-          -odir temp_tiles_ground_thinned_denoise -olaz ^
-          -cores %CORES%
-:: delete temporary tile directory
-rmdir temp_tiles_ground_thinned /s /q
-rmdir temp_tiles_ground_thinned_denoise_height /s /q
-mkdir temp_tiles_ground_thinned_denoise_height
-:: run lasthin on all temporary tiles on 3 cores
-lasheight64 -v -i temp_tiles_ground_thinned_denoise\tile*.laz ^
-          -ignore_class 2 -classify_below %VINE_H_IGNORE_FOOT% 0 ^
-          -classify_between %VINE_H_TRUNK_MINIMUM_HEIGHT% %VINE_H_TRUNK_MAXIMUM_HEIGHT% 3 ^
-          -classify_between %VINE_H_ARMS_MINIMUM_HEIGHT% %VINE_H_ARMS_MAXIMUM_HEIGHT% 4 ^
-          -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^
-          -odir temp_tiles_ground_thinned_denoise_height -olaz ^
-          -cores %CORES%
-:: recreate ground classified huge LAS / LAZ file
-rmdir temp_tiles_ground_thinned_denoise /s /q
-lastile -i temp_tiles_ground_thinned_denoise_height\tile*.laz ^
-        -reverse_tiling ^
-        -o %OUTPUT_POINT_CLOUD_CLIPPED_FILE% -odix _ground -olaz
-:: delete other temporary tile directory
-rmdir temp_tiles_ground_thinned_denoise_height /s /q
-lasgrid64 -v -i *_ground.laz ^
-          -keep_class 3 4 -step %VINE_RASTER_STEP% -counter_16bit ^
-          -o %VINE_RASTER_FILE_NAME%
-lasgrid64 -v -i *_ground.laz ^
-          -keep_class 3 -step %VINE_RASTER_TRUNK_STEP% -counter_16bit ^
-          -o %VINE_RASTER_TRUNK_FILE_NAME%
-*/
-    strOut<<"echo off"<<"\n";
-    strOut<<"set PATH=%PATH%;\""<<lastoolsPath<<"\"\n";
-    strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
-    strOut<<"set INPUT_POINT_CLOUD_FILE="<<pointCloudFileName<<"\n";
-    strOut<<"set INPUT_ROI_SHAPEFILE="<<roiShapefileName<<"\n";
-//    QString pointCloudClippedFileName=QFileInfo(pointCloudFileName).absolutePath();
-    QString pointCloudClippedFileName=outputPath;
-    pointCloudClippedFileName+="/";
-    QString pointCloudClippedFileNameWithoutPath=QFileInfo(pointCloudFileName).completeBaseName();
-    pointCloudClippedFileNameWithoutPath+="_clipped.laz";
-    pointCloudClippedFileName+=pointCloudClippedFileNameWithoutPath;
-    if(QFile::exists(pointCloudClippedFileName))
-    {
-        if(!QFile::remove(pointCloudClippedFileName))
+        if(QFile::exists(processFileNameLastools))
+        {
+            if(!QFile::remove(processFileNameLastools))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(processFileNameLastools);
+                return(false);
+            }
+        }
+        QFile file(processFileNameLastools);
+        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
         {
             strError=functionName;
-            strError+=QObject::tr("\nError removing file:\n%1").arg(pointCloudClippedFileName);
+            strError+=QObject::tr("\nError opening file:\n%1").arg(processFileNameLastools);
             return(false);
         }
+        QTextStream strOut(&file);
+        /*
+        echo off
+        set PATH=%PATH%;C:\lastools2022\bin;
+        set PROCESS_PATH=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\process
+        set INPUT_POINT_CLOUD_FILE=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\export\20220426_Tarazona_vid_hElip.laz
+        set INPUT_ROI_SHAPEFILE=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\roi\roi_25830.shp
+        set OUTPUT_POINT_CLOUD_CLIPPED_FILE=%PROCESS_PATH%\20220426_Tarazona_vid_hElip_clipped.laz
+        set TILE_SIZE=10
+        set TILE_BUFFER=1
+        set GROUND_STEP_SIZE=0.1
+        set CORES=8
+        set LASTHIN_ADAPTATIVE_2D=0.2
+        set LASTHIN_ADAPTATIVE_H=0.2
+        set LASNOISE_STEP_2D=0.05
+        set LASNOISE_STEP_H=0.05
+        set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10
+        set VINE_H_IGNORE_FOOT=0.1
+        set VINE_H_TRUNK_MINIMUM_HEIGHT=0.1
+        set VINE_H_TRUNK_MAXIMUM_HEIGHT=0.4
+        set VINE_H_ARMS_MINIMUM_HEIGHT=0.4
+        set VINE_H_ARMS_MAXIMUM_HEIGHT=1.2
+        set VINE_RASTER_STEP=0.05
+        set VINE_RASTER_FILE_NAME=vines.tif
+        set VINE_RASTER_TRUNK_STEP=0.05
+        set VINE_RASTER_TRUNK_FILE_NAME=vines_trunk.tif
+        REM lasclip64 -v -i %INPUT_POINT_CLOUD_FILE% ^
+                  REM -poly %INPUT_ROI_SHAPEFILE% ^
+                  REM -o %OUTPUT_POINT_CLOUD_CLIPPED_FILE%
+        :: create temporary tile directory
+        rmdir temp_tiles /s /q
+        mkdir temp_tiles
+        :: create a temporary and reversible tiling with tile size 500 and buffer 50
+        lastile -v -i %OUTPUT_POINT_CLOUD_CLIPPED_FILE% ^
+                -reversible -tile_size %TILE_SIZE% -buffer %TILE_BUFFER% ^
+                -o temp_tiles\tile.laz -olaz
+        :: create another temporary tile directory
+        rmdir temp_tiles_ground /s /q
+        mkdir temp_tiles_ground
+        :: run lasground on all temporary tiles on 3 cores
+        lasground_new -v -i temp_tiles\tile*.laz ^
+                  -step %GROUND_STEP_SIZE% -coarse ^
+                  -odir temp_tiles_ground -olaz ^
+                  -cores %CORES%
+        :: delete temporary tile directory
+        rmdir temp_tiles /s /q
+        rmdir temp_tiles_ground_thinned /s /q
+        mkdir temp_tiles_ground_thinned
+        :: run lasthin on all temporary tiles on 3 cores
+        lasthin64 -v -i temp_tiles_ground\tile*.laz ^
+                  -ignore_class 1 -adaptive %LASTHIN_ADAPTATIVE_2D% %LASTHIN_ADAPTATIVE_H% ^
+                  -odir temp_tiles_ground_thinned -olaz ^
+                  -cores %CORES%
+        :: delete temporary tile directory
+        rmdir temp_tiles_ground /s /q
+        rmdir temp_tiles_ground_thinned_denoise /s /q
+        mkdir temp_tiles_ground_thinned_denoise
+        :: run lasthin on all temporary tiles on 3 cores
+        lasnoise64 -v -i temp_tiles_ground_thinned\tile*.laz ^
+                  -ignore_class 2 -step_xy %LASNOISE_STEP_2D% -step_z %LASNOISE_STEP_H% -remove_noise -isolated %LASNOISE_MINIMUN_NUMBER_OF_POINTS% ^
+                  -odir temp_tiles_ground_thinned_denoise -olaz ^
+                  -cores %CORES%
+        :: delete temporary tile directory
+        rmdir temp_tiles_ground_thinned /s /q
+        rmdir temp_tiles_ground_thinned_denoise_height /s /q
+        mkdir temp_tiles_ground_thinned_denoise_height
+        :: run lasthin on all temporary tiles on 3 cores
+        lasheight64 -v -i temp_tiles_ground_thinned_denoise\tile*.laz ^
+                  -ignore_class 2 -classify_below %VINE_H_IGNORE_FOOT% 0 ^
+                  -classify_between %VINE_H_TRUNK_MINIMUM_HEIGHT% %VINE_H_TRUNK_MAXIMUM_HEIGHT% 3 ^
+                  -classify_between %VINE_H_ARMS_MINIMUM_HEIGHT% %VINE_H_ARMS_MAXIMUM_HEIGHT% 4 ^
+                  -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^
+                  -odir temp_tiles_ground_thinned_denoise_height -olaz ^
+                  -cores %CORES%
+        :: recreate ground classified huge LAS / LAZ file
+        rmdir temp_tiles_ground_thinned_denoise /s /q
+        lastile -i temp_tiles_ground_thinned_denoise_height\tile*.laz ^
+                -reverse_tiling ^
+                -o %OUTPUT_POINT_CLOUD_CLIPPED_FILE% -odix _ground -olaz
+        :: delete other temporary tile directory
+        rmdir temp_tiles_ground_thinned_denoise_height /s /q
+        lasgrid64 -v -i *_ground.laz ^
+                  -keep_class 3 4 -step %VINE_RASTER_STEP% -counter_16bit ^
+                  -o %VINE_RASTER_FILE_NAME%
+        lasgrid64 -v -i *_ground.laz ^
+                  -keep_class 3 -step %VINE_RASTER_TRUNK_STEP% -counter_16bit ^
+                  -o %VINE_RASTER_TRUNK_FILE_NAME%
+        */
+        strOut<<"echo off"<<"\n";
+        strOut<<"set PATH=%PATH%;\""<<lastoolsPath<<"\"\n";
+        strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+        strOut<<"set INPUT_POINT_CLOUD_FILE="<<pointCloudFileName<<"\n";
+        strOut<<"set INPUT_ROI_SHAPEFILE="<<roiShapefileName<<"\n";
+        //    QString pointCloudClippedFileName=QFileInfo(pointCloudFileName).absolutePath();
+        QString pointCloudClippedFileName=outputPath;
+        pointCloudClippedFileName+="/";
+        QString pointCloudClippedFileNameWithoutPath=QFileInfo(pointCloudFileName).completeBaseName();
+        pointCloudClippedFileNameWithoutPath+="_clipped.laz";
+        pointCloudClippedFileName+=pointCloudClippedFileNameWithoutPath;
+        if(QFile::exists(pointCloudClippedFileName))
+        {
+            if(!QFile::remove(pointCloudClippedFileName))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(pointCloudClippedFileName);
+                file.close();
+                return(false);
+            }
+        }
+        strOut<<"set OUTPUT_POINT_CLOUD_CLIPPED_FILE=%PROCESS_PATH%\\"<<pointCloudClippedFileNameWithoutPath<<"\n";
+        strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+        strOut<<"set TILE_SIZE=10"<<"\n";
+        strOut<<"set TILE_BUFFER=1"<<"\n";
+        strOut<<"set GROUND_STEP_SIZE=0.1"<<"\n";
+        strOut<<"set CORES=8"<<"\n";
+        strOut<<"set LASTHIN_ADAPTATIVE_2D=0.2"<<"\n";
+        strOut<<"set LASTHIN_ADAPTATIVE_H=0.2"<<"\n";
+        strOut<<"set LASNOISE_STEP_2D=0.05"<<"\n";
+        strOut<<"set LASNOISE_STEP_H=0.05"<<"\n";
+        strOut<<"set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10"<<"\n";
+        strOut<<"set VINE_H_IGNORE_FOOT=0.1"<<"\n";
+        strOut<<"set VINE_H_TRUNK_MINIMUM_HEIGHT=0.1"<<"\n";
+        strOut<<"set VINE_H_TRUNK_MAXIMUM_HEIGHT=0.4"<<"\n";
+        strOut<<"set VINE_H_ARMS_MINIMUM_HEIGHT=0.4"<<"\n";
+        strOut<<"set VINE_H_ARMS_MAXIMUM_HEIGHT=1.2"<<"\n";
+        strOut<<"set VINE_RASTER_STEP=0.05"<<"\n";
+        strOut<<"set VINE_RASTER_FILE_NAME=vines.tif"<<"\n";
+        strOut<<"set VINE_RASTER_TRUNK_STEP=0.05"<<"\n";
+        strOut<<"set VINE_RASTER_TRUNK_FILE_NAME=vines_trunk.tif"<<"\n";
+        strOut<<"lasclip64 -v -i \"%INPUT_POINT_CLOUD_FILE%\" ^"<<"\n";
+        strOut<<"          -poly \"%INPUT_ROI_SHAPEFILE%\" ^"<<"\n";
+        strOut<<"          -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\""<<"\n";
+        strOut<<"rmdir temp_tiles /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles"<<"\n";
+        strOut<<"lastile -v -i \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\" ^"<<"\n";
+        strOut<<"        -reversible -tile_size %TILE_SIZE% -buffer %TILE_BUFFER% ^"<<"\n";
+        strOut<<"        -o temp_tiles\\tile.laz -olaz"<<"\n";
+        strOut<<"rmdir temp_tiles_ground /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles_ground"<<"\n";
+        strOut<<"lasground_new -v -i temp_tiles\\tile*.laz ^"<<"\n";
+        strOut<<"          -step %GROUND_STEP_SIZE% -coarse ^"<<"\n";
+        strOut<<"          -odir temp_tiles_ground -olaz ^"<<"\n";
+        strOut<<"          -cores %CORES%"<<"\n";
+        strOut<<"rmdir temp_tiles /s /q"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles_ground_thinned"<<"\n";
+        strOut<<"lasthin64 -v -i temp_tiles_ground\\tile*.laz ^"<<"\n";
+        strOut<<"          -ignore_class 1 -adaptive %LASTHIN_ADAPTATIVE_2D% %LASTHIN_ADAPTATIVE_H% ^"<<"\n";
+        strOut<<"          -odir temp_tiles_ground_thinned -olaz ^"<<"\n";
+        strOut<<"          -cores %CORES%"<<"\n";
+        strOut<<"rmdir temp_tiles_ground /s /q"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned_denoise /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles_ground_thinned_denoise"<<"\n";
+        strOut<<"lasnoise64 -v -i temp_tiles_ground_thinned\\tile*.laz ^"<<"\n";
+        strOut<<"          -ignore_class 2 -step_xy %LASNOISE_STEP_2D% -step_z %LASNOISE_STEP_H% -remove_noise -isolated %LASNOISE_MINIMUN_NUMBER_OF_POINTS% ^"<<"\n";
+        strOut<<"          -odir temp_tiles_ground_thinned_denoise -olaz ^"<<"\n";
+        strOut<<"          -cores %CORES%"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned /s /q"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned_denoise_height /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles_ground_thinned_denoise_height"<<"\n";
+        strOut<<"lasheight64 -v -i temp_tiles_ground_thinned_denoise\\tile*.laz ^"<<"\n";
+        strOut<<"          -ignore_class 2 -classify_below %VINE_H_IGNORE_FOOT% 0 ^"<<"\n";
+        strOut<<"          -classify_between %VINE_H_TRUNK_MINIMUM_HEIGHT% %VINE_H_TRUNK_MAXIMUM_HEIGHT% 3 ^"<<"\n";
+        strOut<<"          -classify_between %VINE_H_ARMS_MINIMUM_HEIGHT% %VINE_H_ARMS_MAXIMUM_HEIGHT% 4 ^"<<"\n";
+        strOut<<"          -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^"<<"\n";
+        strOut<<"          -odir temp_tiles_ground_thinned_denoise_height -olaz ^"<<"\n";
+        strOut<<"          -cores %CORES%"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned_denoise /s /q"<<"\n";
+        strOut<<"lastile -i temp_tiles_ground_thinned_denoise_height\\tile*.laz ^"<<"\n";
+        strOut<<"        -reverse_tiling ^"<<"\n";
+        strOut<<"        -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\" -odix _ground -olaz"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned_denoise_height /s /q"<<"\n";
+        strOut<<"lasgrid64 -v -i *_ground.laz ^"<<"\n";
+        strOut<<"          -keep_class 3 4 -step %VINE_RASTER_STEP% -counter_16bit ^"<<"\n";
+        strOut<<"          -o %VINE_RASTER_FILE_NAME%"<<"\n";
+        strOut<<"lasgrid64 -v -i *_ground.laz ^"<<"\n";
+        strOut<<"          -keep_class 3 -step %VINE_RASTER_TRUNK_STEP% -counter_16bit ^"<<"\n";
+        strOut<<"          -o %VINE_RASTER_TRUNK_FILE_NAME%"<<"\n";
+        file.close();
     }
-    strOut<<"set OUTPUT_POINT_CLOUD_CLIPPED_FILE=%PROCESS_PATH%\\"<<pointCloudClippedFileNameWithoutPath<<"\n";
-    strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
-    strOut<<"set TILE_SIZE=10"<<"\n";
-    strOut<<"set TILE_BUFFER=1"<<"\n";
-    strOut<<"set GROUND_STEP_SIZE=0.1"<<"\n";
-    strOut<<"set CORES=8"<<"\n";
-    strOut<<"set LASTHIN_ADAPTATIVE_2D=0.2"<<"\n";
-    strOut<<"set LASTHIN_ADAPTATIVE_H=0.2"<<"\n";
-    strOut<<"set LASNOISE_STEP_2D=0.05"<<"\n";
-    strOut<<"set LASNOISE_STEP_H=0.05"<<"\n";
-    strOut<<"set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10"<<"\n";
-    strOut<<"set VINE_H_IGNORE_FOOT=0.1"<<"\n";
-    strOut<<"set VINE_H_TRUNK_MINIMUM_HEIGHT=0.1"<<"\n";
-    strOut<<"set VINE_H_TRUNK_MAXIMUM_HEIGHT=0.4"<<"\n";
-    strOut<<"set VINE_H_ARMS_MINIMUM_HEIGHT=0.4"<<"\n";
-    strOut<<"set VINE_H_ARMS_MAXIMUM_HEIGHT=1.2"<<"\n";
-    strOut<<"set VINE_RASTER_STEP=0.05"<<"\n";
-    strOut<<"set VINE_RASTER_FILE_NAME=vines.tif"<<"\n";
-    strOut<<"set VINE_RASTER_TRUNK_STEP=0.05"<<"\n";
-    strOut<<"set VINE_RASTER_TRUNK_FILE_NAME=vines_trunk.tif"<<"\n";
-    strOut<<"lasclip64 -v -i \"%INPUT_POINT_CLOUD_FILE%\" ^"<<"\n";
-    strOut<<"          -poly \"%INPUT_ROI_SHAPEFILE%\" ^"<<"\n";
-    strOut<<"          -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\""<<"\n";
-    strOut<<"rmdir temp_tiles /s /q"<<"\n";
-    strOut<<"mkdir temp_tiles"<<"\n";
-    strOut<<"lastile -v -i \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\" ^"<<"\n";
-    strOut<<"        -reversible -tile_size %TILE_SIZE% -buffer %TILE_BUFFER% ^"<<"\n";
-    strOut<<"        -o temp_tiles\\tile.laz -olaz"<<"\n";
-    strOut<<"rmdir temp_tiles_ground /s /q"<<"\n";
-    strOut<<"mkdir temp_tiles_ground"<<"\n";
-    strOut<<"lasground_new -v -i temp_tiles\\tile*.laz ^"<<"\n";
-    strOut<<"          -step %GROUND_STEP_SIZE% -coarse ^"<<"\n";
-    strOut<<"          -odir temp_tiles_ground -olaz ^"<<"\n";
-    strOut<<"          -cores %CORES%"<<"\n";
-    strOut<<"rmdir temp_tiles /s /q"<<"\n";
-    strOut<<"rmdir temp_tiles_ground_thinned /s /q"<<"\n";
-    strOut<<"mkdir temp_tiles_ground_thinned"<<"\n";
-    strOut<<"lasthin64 -v -i temp_tiles_ground\\tile*.laz ^"<<"\n";
-    strOut<<"          -ignore_class 1 -adaptive %LASTHIN_ADAPTATIVE_2D% %LASTHIN_ADAPTATIVE_H% ^"<<"\n";
-    strOut<<"          -odir temp_tiles_ground_thinned -olaz ^"<<"\n";
-    strOut<<"          -cores %CORES%"<<"\n";
-    strOut<<"rmdir temp_tiles_ground /s /q"<<"\n";
-    strOut<<"rmdir temp_tiles_ground_thinned_denoise /s /q"<<"\n";
-    strOut<<"mkdir temp_tiles_ground_thinned_denoise"<<"\n";
-    strOut<<"lasnoise64 -v -i temp_tiles_ground_thinned\\tile*.laz ^"<<"\n";
-    strOut<<"          -ignore_class 2 -step_xy %LASNOISE_STEP_2D% -step_z %LASNOISE_STEP_H% -remove_noise -isolated %LASNOISE_MINIMUN_NUMBER_OF_POINTS% ^"<<"\n";
-    strOut<<"          -odir temp_tiles_ground_thinned_denoise -olaz ^"<<"\n";
-    strOut<<"          -cores %CORES%"<<"\n";
-    strOut<<"rmdir temp_tiles_ground_thinned /s /q"<<"\n";
-    strOut<<"rmdir temp_tiles_ground_thinned_denoise_height /s /q"<<"\n";
-    strOut<<"mkdir temp_tiles_ground_thinned_denoise_height"<<"\n";
-    strOut<<"lasheight64 -v -i temp_tiles_ground_thinned_denoise\\tile*.laz ^"<<"\n";
-    strOut<<"          -ignore_class 2 -classify_below %VINE_H_IGNORE_FOOT% 0 ^"<<"\n";
-    strOut<<"          -classify_between %VINE_H_TRUNK_MINIMUM_HEIGHT% %VINE_H_TRUNK_MAXIMUM_HEIGHT% 3 ^"<<"\n";
-    strOut<<"          -classify_between %VINE_H_ARMS_MINIMUM_HEIGHT% %VINE_H_ARMS_MAXIMUM_HEIGHT% 4 ^"<<"\n";
-    strOut<<"          -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^"<<"\n";
-    strOut<<"          -odir temp_tiles_ground_thinned_denoise_height -olaz ^"<<"\n";
-    strOut<<"          -cores %CORES%"<<"\n";
-    strOut<<"rmdir temp_tiles_ground_thinned_denoise /s /q"<<"\n";
-    strOut<<"lastile -i temp_tiles_ground_thinned_denoise_height\\tile*.laz ^"<<"\n";
-    strOut<<"        -reverse_tiling ^"<<"\n";
-    strOut<<"        -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\" -odix _ground -olaz"<<"\n";
-    strOut<<"rmdir temp_tiles_ground_thinned_denoise_height /s /q"<<"\n";
-    strOut<<"lasgrid64 -v -i *_ground.laz ^"<<"\n";
-    strOut<<"          -keep_class 3 4 -step %VINE_RASTER_STEP% -counter_16bit ^"<<"\n";
-    strOut<<"          -o %VINE_RASTER_FILE_NAME%"<<"\n";
-    strOut<<"lasgrid64 -v -i *_ground.laz ^"<<"\n";
-    strOut<<"          -keep_class 3 -step %VINE_RASTER_TRUNK_STEP% -counter_16bit ^"<<"\n";
-    strOut<<"          -o %VINE_RASTER_TRUNK_FILE_NAME%"<<"\n";
-    file.close();
+
+    QString processFileNameGdal=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE_GDAL;
+    {
+        if(QFile::exists(processFileNameGdal))
+        {
+            if(!QFile::remove(processFileNameGdal))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(processFileNameGdal);
+                return(false);
+            }
+        }
+        QFile file(processFileNameGdal);
+        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError opening file:\n%1").arg(processFileNameGdal);
+            return(false);
+        }
+        QTextStream strOut(&file);
+        /*
+        echo off
+        set OSGEO4W_ROOT=C:\Program Files\QGIS 3.22.3
+        set PROCESS_PATH=D:\MetashapeProjects\20220426_Tarazona_Vid_A6000\process
+        set INPUT_RASTER_FILE=%PROCESS_PATH%\vines.tif
+        set OUTPUT_SHAPEFILE_PIXELS=%PROCESS_PATH%\vines_pixels.shp
+        set OUTPUT_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\vines_contours_1.shp
+        set OUTPUT_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\vines_centroids_1.shp
+        set OUTPUT_SHAPEFILE_CONTOURS=%PROCESS_PATH%\vines_contours.shp
+        set OUTPUT_SHAPEFILE_CENTROIDS=%PROCESS_PATH%\vines_centroids.shp
+        set DELETE_SHAPEFILE_PIXELS=%PROCESS_PATH%\vines_pixels.*
+        set DELETE_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\vines_contours_1.*
+        set DELETE_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\vines_centroids_1.*
+        set INPUT_TRUNK_RASTER_FILE=%PROCESS_PATH%\vines_trunk.tif
+        set OUTPUT_TRUNK_SHAPEFILE_PIXELS=%PROCESS_PATH%\vines_trunk_pixels.shp
+        set OUTPUT_TRUNK_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\vines_trunk_contours_1.shp
+        set OUTPUT_TRUNK_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\vines_trunk_centroids_1.shp
+        set OUTPUT_TRUNK_SHAPEFILE_CONTOURS=%PROCESS_PATH%\vines_trunk_contours.shp
+        set OUTPUT_TRUNK_SHAPEFILE_CENTROIDS=%PROCESS_PATH%\vines_trunk_centroids.shp
+        set DELETE_TRUNK_SHAPEFILE_PIXELS=%PROCESS_PATH%\vines_trunk_pixels.*
+        set DELETE_TRUNK_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\vines_trunk_contours_1.*
+        set DELETE_TRUNK_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\vines_trunk_centroids_1.*
+        REM set DELETE_TRUNK_SHAPEFILE_AUX=%PROCESS_PATH%\OUTPUT.*
+        set FIELD_ID_INITIAL=FID
+        set FIELD_ID_FINAL=id
+        call "%OSGEO4W_ROOT%\bin\o4w_env.bat"
+        python "%OSGEO4W_ROOT%\apps\Python39\Scripts\gdal_polygonize.py" %INPUT_RASTER_FILE% -b 1 -f "ESRI Shapefile" %OUTPUT_SHAPEFILE_PIXELS% OUTPUT DN
+        ogr2ogr %OUTPUT_SHAPEFILE_CONTOURS_1% %OUTPUT_SHAPEFILE_PIXELS% -dialect sqlite -sql "SELECT ST_Union(geometry) FROM vines_pixels" -explodecollections
+        ogr2ogr %OUTPUT_SHAPEFILE_CENTROIDS_1% %OUTPUT_SHAPEFILE_CONTOURS_1% -dialect sqlite -sql "SELECT ST_Centroid(geometry) from vines_contours_1"
+        ogr2ogr %OUTPUT_SHAPEFILE_CONTOURS% %OUTPUT_SHAPEFILE_CONTOURS_1% -sql "SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_contours_1"
+        ogrinfo %OUTPUT_SHAPEFILE_CONTOURS% -sql "alter table vines_contours add column enabled integer"
+        ogrinfo %OUTPUT_SHAPEFILE_CONTOURS% -dialect SQLite -sql "update vines_contours set enabled=1"
+        ogr2ogr %OUTPUT_SHAPEFILE_CENTROIDS% %OUTPUT_SHAPEFILE_CENTROIDS_1% -sql "SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_centroids_1"
+        ogrinfo %OUTPUT_SHAPEFILE_CENTROIDS% -sql "alter table vines_centroids add column enabled integer"
+        ogrinfo %OUTPUT_SHAPEFILE_CENTROIDS% -dialect SQLite -sql "update vines_centroids set enabled=1"
+        del "%DELETE_SHAPEFILE_PIXELS%"
+        del "%DELETE_SHAPEFILE_CONTOURS_1%"
+        del "%DELETE_SHAPEFILE_CENTROIDS_1%"
+        python "%OSGEO4W_ROOT%\apps\Python39\Scripts\gdal_polygonize.py" %INPUT_TRUNK_RASTER_FILE% -b 1 -f "ESRI Shapefile" %OUTPUT_TRUNK_SHAPEFILE_PIXELS% OUTPUT DN
+        ogr2ogr %OUTPUT_TRUNK_SHAPEFILE_CONTOURS_1% %OUTPUT_TRUNK_SHAPEFILE_PIXELS% -dialect sqlite -sql "SELECT ST_Union(geometry) FROM vines_trunk_pixels" -explodecollections
+        ogr2ogr %OUTPUT_TRUNK_SHAPEFILE_CENTROIDS_1% %OUTPUT_TRUNK_SHAPEFILE_CONTOURS_1% -dialect sqlite -sql "SELECT ST_Centroid(geometry) from vines_trunk_contours_1"
+        ogr2ogr %OUTPUT_TRUNK_SHAPEFILE_CONTOURS% %OUTPUT_TRUNK_SHAPEFILE_CONTOURS_1% -sql "SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_trunk_contours_1"
+        ogrinfo %OUTPUT_TRUNK_SHAPEFILE_CONTOURS% -sql "alter table vines_trunk_contours add column enabled integer"
+        ogrinfo %OUTPUT_TRUNK_SHAPEFILE_CONTOURS% -dialect SQLite -sql "update vines_trunk_contours set enabled=1"
+        ogr2ogr %OUTPUT_TRUNK_SHAPEFILE_CENTROIDS% %OUTPUT_TRUNK_SHAPEFILE_CENTROIDS_1% -sql "SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_trunk_centroids_1"
+        ogrinfo %OUTPUT_TRUNK_SHAPEFILE_CENTROIDS% -sql "alter table vines_trunk_centroids add column enabled integer"
+        ogrinfo %OUTPUT_TRUNK_SHAPEFILE_CENTROIDS% -dialect SQLite -sql "update vines_trunk_centroids set enabled=1"
+        del "%DELETE_TRUNK_SHAPEFILE_PIXELS%"
+        del "%DELETE_TRUNK_SHAPEFILE_CONTOURS_1%"
+        del "%DELETE_TRUNK_SHAPEFILE_CENTROIDS_1%"
+        del "%DELETE_TRUNK_SHAPEFILE_AUX%"
+        */
+        strOut<<"echo off"<<"\n";
+        strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+        strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+        strOut<<"set INPUT_RASTER_FILE=%PROCESS_PATH%\\vines.tif"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_PIXELS=%PROCESS_PATH%\\vines_pixels.shp"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\\vines_contours_1.shp"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\\vines_centroids_1.shp"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_CONTOURS=%PROCESS_PATH%\\vines_contours.shp"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_CENTROIDS=%PROCESS_PATH%\\vines_centroids.shp"<<"\n";
+        strOut<<"set DELETE_SHAPEFILE_PIXELS=%PROCESS_PATH%\\vines_pixels.*"<<"\n";
+        strOut<<"set DELETE_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\\vines_contours_1.*"<<"\n";
+        strOut<<"set DELETE_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\\vines_centroids_1.*"<<"\n";
+        strOut<<"set INPUT_TRUNK_RASTER_FILE=%PROCESS_PATH%\\vines_trunk.tif"<<"\n";
+        strOut<<"set OUTPUT_TRUNK_SHAPEFILE_PIXELS=%PROCESS_PATH%\\vines_trunk_pixels.shp"<<"\n";
+        strOut<<"set OUTPUT_TRUNK_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\\vines_trunk_contours_1.shp"<<"\n";
+        strOut<<"set OUTPUT_TRUNK_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\\vines_trunk_centroids_1.shp"<<"\n";
+        strOut<<"set OUTPUT_TRUNK_SHAPEFILE_CONTOURS=%PROCESS_PATH%\\vines_trunk_contours.shp"<<"\n";
+        strOut<<"set OUTPUT_TRUNK_SHAPEFILE_CENTROIDS=%PROCESS_PATH%\\vines_trunk_centroids.shp"<<"\n";
+        strOut<<"set DELETE_TRUNK_SHAPEFILE_PIXELS=%PROCESS_PATH%\\vines_trunk_pixels.*"<<"\n";
+        strOut<<"set DELETE_TRUNK_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\\vines_trunk_contours_1.*"<<"\n";
+        strOut<<"set DELETE_TRUNK_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\\vines_trunk_centroids_1.*"<<"\n";
+        strOut<<"REM set DELETE_TRUNK_SHAPEFILE_AUX=%PROCESS_PATH%\\OUTPUT.*"<<"\n";
+        strOut<<"set FIELD_ID_INITIAL=FID"<<"\n";
+        strOut<<"set FIELD_ID_FINAL=id"<<"\n";
+        strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+        strOut<<"python \"%OSGEO4W_ROOT%\\apps\\Python39\\Scripts\\gdal_polygonize.py\" \"%INPUT_RASTER_FILE%\" -b 1 -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE_PIXELS%\" OUTPUT DN"<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_SHAPEFILE_CONTOURS_1%\" \"%OUTPUT_SHAPEFILE_PIXELS%\" -dialect sqlite -sql \"SELECT ST_Union(geometry) FROM vines_pixels\" -explodecollections"<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_SHAPEFILE_CENTROIDS_1%\" \"%OUTPUT_SHAPEFILE_CONTOURS_1%\" -dialect sqlite -sql \"SELECT ST_Centroid(geometry) from vines_contours_1\""<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_SHAPEFILE_CONTOURS%\" \"%OUTPUT_SHAPEFILE_CONTOURS_1%\" -sql \"SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_contours_1\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_SHAPEFILE_CONTOURS%\" -sql \"alter table vines_contours add column enabled integer\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_SHAPEFILE_CONTOURS%\" -dialect SQLite -sql \"update vines_contours set enabled=1\""<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_SHAPEFILE_CENTROIDS%\" \"%OUTPUT_SHAPEFILE_CENTROIDS_1%\" -sql \"SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_centroids_1\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_SHAPEFILE_CENTROIDS%\" -sql \"alter table vines_centroids add column enabled integer\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_SHAPEFILE_CENTROIDS%\" -dialect SQLite -sql \"update vines_centroids set enabled=1\""<<"\n";
+        strOut<<"del \"%DELETE_SHAPEFILE_PIXELS%\""<<"\n";
+        strOut<<"del \"%DELETE_SHAPEFILE_CONTOURS_1%\""<<"\n";
+        strOut<<"del \"%DELETE_SHAPEFILE_CENTROIDS_1%\""<<"\n";
+        strOut<<"python \"%OSGEO4W_ROOT%\\apps\\Python39\\Scripts\\gdal_polygonize.py\" \"%INPUT_TRUNK_RASTER_FILE%\" -b 1 -f \"ESRI Shapefile\" \"%OUTPUT_TRUNK_SHAPEFILE_PIXELS%\" OUTPUT DN"<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_TRUNK_SHAPEFILE_CONTOURS_1%\" \"%OUTPUT_TRUNK_SHAPEFILE_PIXELS%\" -dialect sqlite -sql \"SELECT ST_Union(geometry) FROM vines_trunk_pixels\" -explodecollections"<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_TRUNK_SHAPEFILE_CENTROIDS_1%\" \"%OUTPUT_TRUNK_SHAPEFILE_CONTOURS_1%\" -dialect sqlite -sql \"SELECT ST_Centroid(geometry) from vines_trunk_contours_1\""<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_TRUNK_SHAPEFILE_CONTOURS%\" \"%OUTPUT_TRUNK_SHAPEFILE_CONTOURS_1%\" -sql \"SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_trunk_contours_1\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_TRUNK_SHAPEFILE_CONTOURS%\" -sql \"alter table vines_trunk_contours add column enabled integer\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_TRUNK_SHAPEFILE_CONTOURS%\" -dialect SQLite -sql \"update vines_trunk_contours set enabled=1\""<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_TRUNK_SHAPEFILE_CENTROIDS%\" \"%OUTPUT_TRUNK_SHAPEFILE_CENTROIDS_1%\" -sql \"SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_trunk_centroids_1\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_TRUNK_SHAPEFILE_CENTROIDS%\" -sql \"alter table vines_trunk_centroids add column enabled integer\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_TRUNK_SHAPEFILE_CENTROIDS%\" -dialect SQLite -sql \"update vines_trunk_centroids set enabled=1\""<<"\n";
+        strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_PIXELS%\""<<"\n";
+        strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_CONTOURS_1%\""<<"\n";
+        strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_CENTROIDS_1%\""<<"\n";
+        strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_AUX%\""<<"\n";
+        file.close();
+    }
+
+
 //    QStringList parameters;
 //    mStrExecution=processFileName;
 //    if(mPtrProgressExternalProcessDialog==NULL)

@@ -24,6 +24,8 @@
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP "Plants location from photogrammetric point cloud: 1. Preprocessing"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_HELP_PDF_FILE "PlantsLocationFromPhotogrammetricPointCloud_1_Preprocessing.pdf"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE "1_plppc_preprocessing.bat"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE_LASTOOLS "1_plppc_preprocessing_lastools.bat"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PROCESS_FILE_GDAL "1_plppc_preprocessing_gdal.bat"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_LASTOOLS_PATH "PLPPC_PP_LAStoolsPath"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_POINT_CLOUD_FILE "PLPPC_PP_PointCloudFile"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_TAG_ROI_SHAPEFILE "PLPPC_PP_ROIShapeFile"
