@@ -629,20 +629,19 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         file.close();
     }
 
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+//    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
 
-//    QStringList parameters;
-//    mStrExecution=processFileName;
-//    if(mPtrProgressExternalProcessDialog==NULL)
-//    {
-//        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
-//        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
-//    }
-//    mPtrProgressExternalProcessDialog->setDialogTitle(command);
-////    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
-
-//    mInitialDateTime=QDateTime::currentDateTime();
-//    mProgressExternalProcessTitle=command;
-//    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
     return(true);
 }
 
