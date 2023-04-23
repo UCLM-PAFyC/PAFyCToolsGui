@@ -24,6 +24,7 @@ DESTDIR_RELEASE= ./../../../build_osgeo4w/release
 DESTDIR_DEBUG= ./../../../build_osgeo4w/debug
 #QUAZIPLIB_PATH= ./../../../depends/libQuaZip-1.2
 
+INCLUDEPATH += ../../libs/libLicenseManager
 INCLUDEPATH += ../../libs/libParameters
 INCLUDEPATH += ../../libs/libProcessTools
 #INCLUDEPATH += C:\Qt\Qt5.15.2\5.15.2\msvc2019_64\include\QtZlib
@@ -44,6 +45,7 @@ HEADERS += \
 FORMS += \
     PAFyCToolsDialog.ui
 
+LIBS += -llibLicenseManager
 LIBS += -llibParameters
 LIBS += -llibProcessTools
 debug{
