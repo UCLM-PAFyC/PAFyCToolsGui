@@ -46,6 +46,9 @@ private:
     bool process_plppc_pl(QString& qgisPath,
                           QString& outputPath,
                           QString& strError);
+    bool process_plppc_pf(QString& qgisPath,
+                          QString& outputPath,
+                          QString& strError);
     bool removeDir(QString dirName,
                    bool onlyContent=false);
 

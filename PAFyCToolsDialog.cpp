@@ -150,9 +150,14 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PP);
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PL);
+    mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PF);
     QVector<QString> aux2;
     mModelManagementCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC_PL]=aux2;
     mModelManagementCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC_PL].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PL_MODELMANAGEMET_FIRST_COMMAND);
+    QVector<QString> aux3;
+    mModelManagementCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC_PF]=aux3;
+    mModelManagementCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC_PF].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PF_MODELMANAGEMET_FIRST_COMMAND);
+    mModelManagementCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC_PF].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PF_MODELMANAGEMET_SECOND_COMMAND);
 
     ui->commandComboBox->addItem(PAFYCTOOLSGUI_NO_COMBO_SELECT);
     for(int i=0;i<mCommands.size();i++)
@@ -862,6 +867,74 @@ bool PAFyCToolsDialog::process_plppc_pl(QString &qgisPath,
     return(true);
 }
 
+bool PAFyCToolsDialog::process_plppc_pf(QString &qgisPath,
+                                        QString &outputPath,
+                                        QString &strError)
+{
+    QString command=PAFYCTOOLSGUI_COMMAND_PLPPC_PF;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,roiShapefileName,inputPath,latsShapefile,parameterCode,lastoolsPath,lidarFilesPath;
+    int intValue;
+    double dblValue;
+    bool okToNumber;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+    QString programPath=auxDir.absolutePath();
+    QString programFile=auxDir.absolutePath()+"/"+PAFYCTOOLSGUI_PROGRAM_CONSOLE_FILE_NAME;
+    if(!QFile::exists(programFile))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists program file:\n%1")
+                .arg(programFile);
+        return(false);
+    }
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PF_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing file:\n%1").arg(processFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError opening file:\n%1").arg(processFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+    strOut<<"echo off"<<"\n";
+    strOut<<"set OUTPUT_PATH="<<outputPath<<"\n";
+    strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+    strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+    strOut<<"cd /d \""<<programPath<<"\"\n";
+//    strOut<<"SET PATH=%PATH%;\""<<QFileInfo(programFile).absolutePath()<<"\""<<"\n";
+//    strOut<<"\""<<programFile<<"\" ";
+    strOut<<QFileInfo(programFile).fileName()<<" ";
+    strOut<<"\""<<command<<"\" ";
+    strOut<<"\""<<qgisPath<<"\" ";
+    strOut<<"\""<<outputPath<<"\"\n";
+    file.close();
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+    return(true);
+}
+
 bool PAFyCToolsDialog::removeDir(QString dirName, bool onlyContent)
 {
     bool result = true;
@@ -1294,6 +1367,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PL,Qt::CaseInsensitive)==0)
     {
         if(!process_plppc_pl(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PF,Qt::CaseInsensitive)==0)
+    {
+        if(!process_plppc_pf(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
