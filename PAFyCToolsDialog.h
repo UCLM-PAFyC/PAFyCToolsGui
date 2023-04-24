@@ -57,6 +57,7 @@ private:
     QVector<QString> mCommands;
     QMap<QString,QVector<QString> > mSubCommandsByCommand;
     ParametersManager* mPtrParametersManager;
+    ParametersManager* mPtrParametersManagerModelManagementCommands;
     ProcessTools::ProgressExternalProcessDialog* mPtrProgressExternalProcessDialog;
     QString mStrExecution;
     QDateTime mInitialDateTime;
@@ -64,6 +65,7 @@ private:
     QString mTempPath;
     QString mOutputPath;
     QVector<QString> mResultFiles;
+    QMap<QString,QVector<QString> > mModelManagementCommandsByCommand;
 };
 
 #endif // PAFYCTOOLSDIALOG_H

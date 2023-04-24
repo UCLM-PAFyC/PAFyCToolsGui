@@ -15,6 +15,8 @@
 #include "PAFyCToolsGuiDefinitions.h"
 #include "PAFyCToolsDialog.h"
 #include "ui_PAFyCToolsDialog.h"
+//#include "../../libs/libModelManagementTools/ModelDbManagerDefinitions.h"
+
 
 PAFyCToolsDialog::PAFyCToolsDialog(QWidget *parent) :
     QDialog(parent),
@@ -41,6 +43,11 @@ PAFyCToolsDialog::~PAFyCToolsDialog()
     {
         delete(mPtrParametersManager);
         mPtrParametersManager=NULL;
+    }
+    if(mPtrParametersManagerModelManagementCommands!=NULL)
+    {
+        delete(mPtrParametersManagerModelManagementCommands);
+        mPtrParametersManagerModelManagementCommands=NULL;
     }
 //    if(mPtrProgressExternalProcessDialog!=NULL)
 //    {
@@ -119,12 +126,33 @@ bool PAFyCToolsDialog::initialize(QString &strError)
         return(false);
     }
 
+    QString parametersModelManagementFileName=mBasePath+"/"+PAFYCTOOLSGUI_PARAMETERS_MODELDBMANAGERDEFINITIONS_PROJECT_TYPE_PAFYCTOOLS_PARAMETERS_FILE_NAME;
+    if(!QFile::exists(parametersModelManagementFileName))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameters file:\n%1").arg(parametersModelManagementFileName);
+        return(false);
+    }
+    mPtrParametersManagerModelManagementCommands=new ParametersManager();
+    if(!mPtrParametersManagerModelManagementCommands->loadFromXml(parametersModelManagementFileName,strAuxError))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nLoading parameters file:\n%1\nerror:\n%2")
+                .arg(parametersModelManagementFileName).arg(strAuxError);
+        delete(mPtrParametersManagerModelManagementCommands);
+        mPtrParametersManagerModelManagementCommands=NULL;
+        return(false);
+    }
+
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_PLPPC);
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PP);
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PL);
+    QVector<QString> aux2;
+    mModelManagementCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC_PL]=aux2;
+    mModelManagementCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC_PL].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PL_MODELMANAGEMET_FIRST_COMMAND);
 
     ui->commandComboBox->addItem(PAFYCTOOLSGUI_NO_COMBO_SELECT);
     for(int i=0;i<mCommands.size();i++)
@@ -649,6 +677,187 @@ bool PAFyCToolsDialog::process_plppc_pl(QString &qgisPath,
                                         QString &outputPath,
                                         QString &strError)
 {
+    QString command=PAFYCTOOLSGUI_COMMAND_PLPPC_PL;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,roiShapefileName,inputPath,latsShapefile,parameterCode,lastoolsPath,lidarFilesPath;
+    int intValue;
+    double dblValue;
+    bool okToNumber;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+    QString programPath=auxDir.absolutePath();
+    QString programFile=auxDir.absolutePath()+"/"+PAFYCTOOLSGUI_PROGRAM_CONSOLE_FILE_NAME;
+    if(!QFile::exists(programFile))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists program file:\n%1")
+                .arg(programFile);
+        return(false);
+    }
+
+//    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PL_TAG_ROI_SHAPEFILE;
+//    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+//    if(ptrParameter==NULL)
+//    {
+//        strError=functionName;
+//        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+//                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+//        return(false);
+//    }
+//    ptrParameter->getValue(strValue);
+//    strValue=strValue.trimmed();
+//    if(!QFile::exists(strValue))
+//    {
+//        strError=functionName;
+//        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+//                .arg(parameterCode).arg(strValue);
+//        return(false);
+//    }
+//    roiShapefileName=strValue;
+
+//    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PL_TAG_CRS_EPSG_CODE;
+//    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+//    if(ptrParameter==NULL)
+//    {
+//        strError=functionName;
+//        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+//                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+//        return(false);
+//    }
+//    ptrParameter->getValue(strValue);
+//    strValue=strValue.trimmed();
+//    int crsEpsgCode,verticalCrsEpsgCode=-1;
+//    if(strValue.contains("+"))
+//    {
+//        QStringList strCrsValues=strValue.split("+");
+//        if(strCrsValues.size()!=2)
+//        {
+//            strError=functionName;
+//            strError+=QObject::tr("\nFor parameter: %1\nInvalid value for compound crs: %1\nin file:\n%2")
+//                    .arg(parameterCode).arg(strValue).arg(mPtrParametersManager->getFileName());
+//            return(false);
+//        }
+//        strValue=strCrsValues[0].trimmed();
+//        okToNumber=false;
+//        intValue=strValue.toInt(&okToNumber);
+//        if(!okToNumber)
+//        {
+//            strError=functionName;
+//            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+//                    .arg(parameterCode).arg(strValue);
+//            return(false);
+//        }
+//        crsEpsgCode=intValue;
+//        strValue=strCrsValues[1].trimmed();
+//        okToNumber=false;
+//        intValue=strValue.toInt(&okToNumber);
+//        if(!okToNumber)
+//        {
+//            strError=functionName;
+//            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+//                    .arg(parameterCode).arg(strValue);
+//            return(false);
+//        }
+//        verticalCrsEpsgCode=intValue;
+//    }
+//    else
+//    {
+//        okToNumber=false;
+//        intValue=strValue.toInt(&okToNumber);
+//        if(!okToNumber)
+//        {
+//            strError=functionName;
+//            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+//                    .arg(parameterCode).arg(strValue);
+//            return(false);
+//        }
+//        crsEpsgCode=intValue;
+//    }
+
+//    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PL_TAG_PROJECT_ID;
+//    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+//    if(ptrParameter==NULL)
+//    {
+//        strError=functionName;
+//        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+//                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+//        return(false);
+//    }
+//    ptrParameter->getValue(strValue);
+//    strValue=strValue.trimmed();
+//    if(strValue.split(" ").size()>1)
+//    {
+//        strError=functionName;
+//        strError+=QObject::tr("\nExists spaces in value: %1\nfor parameter: %2 in file:\n%3")
+//                .arg(strValue).arg(parameterCode).arg(mPtrParametersManager->getFileName());
+//        return(false);
+//    }
+//    QString projectId=strValue;
+
+//    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PL_TAG_INPUT_PATH;
+//    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+//    if(ptrParameter==NULL)
+//    {
+//        strError=functionName;
+//        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+//                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+//        return(false);
+//    }
+//    ptrParameter->getValue(strValue);
+//    strValue=strValue.trimmed();
+//    if(!auxDir.exists(strValue))
+//    {
+//        strError=functionName;
+//        strError+=QObject::tr("\nNot exists path:\n%1\for parameter: %2 in file:\n%3")
+//                .arg(strValue).arg(parameterCode).arg(mPtrParametersManager->getFileName());
+//        return(false);
+//    }
+//    QString inputPath=strValue;
+
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PL_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing file:\n%1").arg(processFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError opening file:\n%1").arg(processFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+    strOut<<"echo off"<<"\n";
+    strOut<<"set OUTPUT_PATH="<<outputPath<<"\n";
+    strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+    strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+    strOut<<"cd /d \""<<programPath<<"\"\n";
+//    strOut<<"SET PATH=%PATH%;\""<<QFileInfo(programFile).absolutePath()<<"\""<<"\n";
+//    strOut<<"\""<<programFile<<"\" ";
+    strOut<<QFileInfo(programFile).fileName()<<" ";
+    strOut<<"\""<<command<<"\" ";
+    strOut<<"\""<<qgisPath<<"\" ";
+    strOut<<"\""<<outputPath<<"\"\n";
+    file.close();
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
 
     return(true);
 }
@@ -830,6 +1039,16 @@ void PAFyCToolsDialog::on_parametersPushButton_clicked()
     }
     ParametersManagerDialog parameterDialog(mPtrParametersManager,
                                             command);
+    if(mModelManagementCommandsByCommand.contains(command))
+    {
+        QVector<QString> modelManagementCommands=mModelManagementCommandsByCommand[command];
+        for(int nc=0;nc<modelManagementCommands.size();nc++)
+        {
+            QString modelManagementCommand=modelManagementCommands[nc];
+            ParametersManagerDialog parameterDialog(mPtrParametersManagerModelManagementCommands,
+                                                    modelManagementCommand);
+        }
+    }
 }
 
 void PAFyCToolsDialog::on_ProgressExternalProcessDialog_closed()
