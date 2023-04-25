@@ -383,6 +383,8 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         set VINE_RASTER_FILE_NAME=vines.tif
         set VINE_RASTER_TRUNK_STEP=0.05
         set VINE_RASTER_TRUNK_FILE_NAME=vines_trunk.tif
+        set OUTPUT_DTM_FILE=%PROCESS_PATH%\20220426_Tarazona_vid_hElip_dtm_50cm.tif
+        set STEP=0.5
         REM lasclip64 -v -i %INPUT_POINT_CLOUD_FILE% ^
                   REM -poly %INPUT_ROI_SHAPEFILE% ^
                   REM -o %OUTPUT_POINT_CLOUD_CLIPPED_FILE%
@@ -486,6 +488,10 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         strOut<<"set VINE_RASTER_FILE_NAME=vines.tif"<<"\n";
         strOut<<"set VINE_RASTER_TRUNK_STEP=0.05"<<"\n";
         strOut<<"set VINE_RASTER_TRUNK_FILE_NAME=vines_trunk.tif"<<"\n";
+        strOut<<"set DTM_STEP=0.10"<<"\n";
+        QString dtmFileName=QFileInfo(pointCloudFileName).completeBaseName();
+        dtmFileName+="_dtm_10cm.tif";
+        strOut<<"set OUTPUT_DTM_FILE=\""<<dtmFileName<<"\"\n";
         strOut<<"lasclip64 -v -i \"%INPUT_POINT_CLOUD_FILE%\" ^"<<"\n";
         strOut<<"          -poly \"%INPUT_ROI_SHAPEFILE%\" ^"<<"\n";
         strOut<<"          -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\""<<"\n";
@@ -535,6 +541,9 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         strOut<<"lasgrid64 -v -i *_ground.laz ^"<<"\n";
         strOut<<"          -keep_class 3 -step %VINE_RASTER_TRUNK_STEP% -counter_16bit ^"<<"\n";
         strOut<<"          -o %VINE_RASTER_TRUNK_FILE_NAME%"<<"\n";
+        strOut<<"las2dem64 -v -i *_ground.laz ^"<<"\n";
+        strOut<<"          -step %STEP% -keep_class 2 ^"<<"\n";
+        strOut<<"          -o %OUTPUT_DTM_FILE%"<<"\n";
         file.close();
     }
 
@@ -878,6 +887,35 @@ bool PAFyCToolsDialog::process_plppc_pf(QString &qgisPath,
     double dblValue;
     bool okToNumber;
     Parameter* ptrParameter=NULL;
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PF_TAG_PROJECT_ID;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(strValue.split(" ").size()>1)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nExists spaces in project id: %1 in file:\n%2")
+                .arg(strValue).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    QString projectId=strValue;
+    QString dbFileName=outputPath+"/PAFyCToolsGui_";
+    dbFileName+=projectId;
+    dbFileName+=".sqlite";
+    if(!QFile::exists(dbFileName))
+    {
+        strError=functionName;
+        strError=QObject::tr("\nNot exists project database file:\nror:\n%1")
+                .arg(dbFileName);
+        return(false);
+    }
     QDir auxDir=QDir::currentPath();
     QString programPath=auxDir.absolutePath();
     QString programFile=auxDir.absolutePath()+"/"+PAFYCTOOLSGUI_PROGRAM_CONSOLE_FILE_NAME;
@@ -917,6 +955,11 @@ bool PAFyCToolsDialog::process_plppc_pf(QString &qgisPath,
     strOut<<"\""<<command<<"\" ";
     strOut<<"\""<<qgisPath<<"\" ";
     strOut<<"\""<<outputPath<<"\"\n";
+    QString outputFramesShapefile="vines_frames.shp";
+//    ogr2ogr -f "ESRI Shapefile" "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames.shp" -sql "select objects.object_id as id, objects_bb3d.the_geom_base from objects, objects_bb3d where objects.id = objects_bb3d.object_id" "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\PAFyCToolsGui_20220426_Tarazona_Vid_A6000.sqlite"
+    strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"%OUTPUT_PATH%\\"<<outputFramesShapefile<<"\" -sql ";
+    strOut<<"\"select objects.object_id as id, objects_bb3d.the_geom_base from objects, objects_bb3d where objects.id = objects_bb3d.object_id\" ";
+    strOut<<"\""<<dbFileName<<"\"";
     file.close();
 
     QStringList parameters;
