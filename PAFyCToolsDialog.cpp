@@ -616,7 +616,7 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         del "%DELETE_TRUNK_SHAPEFILE_PIXELS%"
         del "%DELETE_TRUNK_SHAPEFILE_CONTOURS_1%"
         del "%DELETE_TRUNK_SHAPEFILE_CENTROIDS_1%"
-        del "%DELETE_TRUNK_SHAPEFILE_AUX%"
+        REM del "%DELETE_TRUNK_SHAPEFILE_AUX%"
         */
         strOut<<"echo off"<<"\n";
         strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
@@ -639,7 +639,7 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         strOut<<"set DELETE_TRUNK_SHAPEFILE_PIXELS=%PROCESS_PATH%\\vines_trunk_pixels.*"<<"\n";
         strOut<<"set DELETE_TRUNK_SHAPEFILE_CONTOURS_1=%PROCESS_PATH%\\vines_trunk_contours_1.*"<<"\n";
         strOut<<"set DELETE_TRUNK_SHAPEFILE_CENTROIDS_1=%PROCESS_PATH%\\vines_trunk_centroids_1.*"<<"\n";
-        strOut<<"REM set DELETE_TRUNK_SHAPEFILE_AUX=%PROCESS_PATH%\\OUTPUT.*"<<"\n";
+//        strOut<<"REM set DELETE_TRUNK_SHAPEFILE_AUX=%PROCESS_PATH%\\OUTPUT.*"<<"\n";
         strOut<<"set FIELD_ID_INITIAL=FID"<<"\n";
         strOut<<"set FIELD_ID_FINAL=id"<<"\n";
         strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
@@ -667,7 +667,7 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_PIXELS%\""<<"\n";
         strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_CONTOURS_1%\""<<"\n";
         strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_CENTROIDS_1%\""<<"\n";
-        strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_AUX%\""<<"\n";
+//        strOut<<"del \"%DELETE_TRUNK_SHAPEFILE_AUX%\""<<"\n";
         file.close();
     }
 
