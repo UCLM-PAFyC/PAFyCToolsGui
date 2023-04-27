@@ -542,7 +542,7 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         strOut<<"          -keep_class 3 -step %VINE_RASTER_TRUNK_STEP% -counter_16bit ^"<<"\n";
         strOut<<"          -o %VINE_RASTER_TRUNK_FILE_NAME%"<<"\n";
         strOut<<"las2dem64 -v -i *_ground.laz ^"<<"\n";
-        strOut<<"          -step %STEP% -keep_class 2 ^"<<"\n";
+        strOut<<"          -step %DTM_STEP% -keep_class 2 ^"<<"\n";
         strOut<<"          -o %OUTPUT_DTM_FILE%"<<"\n";
         file.close();
     }
