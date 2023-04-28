@@ -145,6 +145,7 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     }
 
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_PLPPC);
+    mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CCFPGP);
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
@@ -167,6 +168,342 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     ui->subCommandComboBox->addItem(PAFYCTOOLSGUI_NO_COMBO_SELECT);
     ui->subCommandComboBox->setEnabled(false);
 
+    return(true);
+}
+
+bool PAFyCToolsDialog::process_ccfpgp(QString &qgisPath,
+                                      QString &outputPath,
+                                      QString &strError)
+{
+    QString command=PAFYCTOOLSGUI_COMMAND_CCFPGP;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,framesShapefile,dsmFile,dtmFile,outputShapefile,parameterCode,str_date;
+    QString strAuxError,dateFormat,dateFromDemsFileStringSeparator;
+    int intValue,dateTagPositionInDemFiles;
+    double dblValue,cropsMininumHeight;
+    bool okToNumber,computeGCC,computeVolume,dateFromDemFiles;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_FRAMES_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    framesShapefile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_DSM_FILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    dsmFile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_DTM_FILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    dtmFile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_OUTPUT_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!strValue.isEmpty())
+    {
+//        if(QFile::exists(strValue))
+//        {
+//            strError=functionName;
+//            strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+//                    .arg(parameterCode).arg(strValue);
+//            return(false);
+//        }
+        outputShapefile=strValue;
+    }
+    else
+    {
+        outputShapefile="none";
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_CROP_MINIMUM_HEIGHT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    cropsMininumHeight=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_COMPUTE_GCC;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    computeGCC=false;
+    if(strValue.compare("true",Qt::CaseInsensitive)==0)
+    {
+        computeGCC=true;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_COMPUTE_VOLUME;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    computeVolume=false;
+    if(strValue.compare("true",Qt::CaseInsensitive)==0)
+    {
+        computeVolume=true;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_DATE_FROM_DEM_FILES;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFromDemFiles=false;
+    if(strValue.compare("true",Qt::CaseInsensitive)==0)
+    {
+        dateFromDemFiles=true;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_DEM_FILES_TAGS_STRING_SEPARATOR;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFromDemsFileStringSeparator=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_DEM_FILES_TAG_DATE_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dateTagPositionInDemFiles=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_DATE_FORMAT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFormat=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_DATE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    str_date=strValue;
+    if(dateFromDemFiles)
+    {
+        str_date="none";
+    }
+
+    mPythonFiles.clear();
+    QString pythonFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_CCFPGP_PYTHON_FILE;
+    if(!writePythonProgramCropsCharacterizationFromPhotogrammetricGeomaticProducts(pythonFileName,
+                                                                                   strAuxError))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError writting python file:\n%1").arg(strAuxError);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    mPythonFiles.append(pythonFileName);
+
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_CCFPGP_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nHa fallado la eliminación del fichero:\n%1").arg(processFileName);
+            QFile::remove(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nHa fallado la apertura del fichero:\n%1").arg(processFileName);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+
+    /*
+--input_crops_frames_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\test\vines_frames.shp"
+ --input_dsm "D:\PAFyCToolsGui\20220603_Tarazona_RGB_Vid\input\DSM-103-RGB_Tarazona_Vid_20220603_25830_2cm.tif"
+ --input_dtm "D:\PAFyCToolsGui\20220603_Tarazona_RGB_Vid\input\DEM-103-RGB_Tarazona_Vid_20220603_25830_2cm.tif"
+ --crop_minimum_height 0.05 --output_shp "D:\PAFyCToolsGui\2022_Tarazona.shp" --compute_GCC=1 --compute_volume=1
+ --date_from_dem_files=1 --dem_files_string_separator="_" --dem_files_date_string_position=4 --date_format="%Y%m%d" --date=none
+
+--input_crops_frames_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\test\vines_frames.shp"
+ --input_dsm "D:\PAFyCToolsGui\20220603_Tarazona_RGB_Vid\input\DSM-103-RGB_Tarazona_Vid_20220603_25830_2cm.tif"
+ --input_dtm "D:\PAFyCToolsGui\20220603_Tarazona_RGB_Vid\input\DEM-103-RGB_Tarazona_Vid_20220603_25830_2cm.tif"
+ --crop_minimum_height 0.05 --output_shp none --compute_GCC=1 --compute_volume=1 --date_from_dem_files=1
+ --dem_files_string_separator="_" --dem_files_date_string_position=4 --date_format="%Y%m%d" --date=none
+    */
+
+    strOut<<"echo off"<<"\n";
+    strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+    strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+    strOut<<"set TOOL="<<pythonFileName<<"\n";
+    strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+    strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+    strOut<<"python %TOOL% ";
+    strOut<<"--input_crops_frames_shp \""<<framesShapefile <<"\" ";
+    strOut<<"--input_dsm \""<<dsmFile<<"\" ";
+    strOut<<"--input_dtm \""<<dtmFile<<"\" ";
+    strOut<<"--crop_minimum_height "<<QString::number(cropsMininumHeight,'f',2)<<" ";
+    strOut<<"--output_shp \""<<outputShapefile<<"\" ";
+    strOut<<"--compute_GCC ";
+    if(computeGCC) strOut<<"1"<<" ";
+    else strOut<<"0"<<" ";
+    strOut<<"--compute_volume ";
+    if(computeVolume) strOut<<"1"<<" ";
+    else strOut<<"0"<<" ";
+    strOut<<"--date_from_dem_files ";
+    if(dateFromDemFiles) strOut<<"1"<<" ";
+    else strOut<<"0"<<" ";
+    strOut<<"--dem_files_string_separator=\""<<dateFromDemsFileStringSeparator<<"\" ";
+    strOut<<"--dem_files_date_string_position="<<QString::number(dateTagPositionInDemFiles)<<" ";
+    dateFormat=dateFormat.replace("%","%%");
+    strOut<<"--date_format=\""<<dateFormat<<"\" ";
+    if(str_date.compare("none",Qt::CaseInsensitive)==0)
+    {
+        strOut<<"--date="<<str_date<<"\n";
+    }
+    else
+    {
+        strOut<<"--date=\""<<str_date<<"\"\n";
+    }
+    file.close();
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
     return(true);
 }
 
@@ -1006,6 +1343,504 @@ bool PAFyCToolsDialog::removeDir(QString dirName, bool onlyContent)
     return result;
 }
 
+bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetricGeomaticProducts(QString pythonFileName,
+                                                                                                  QString& strError)
+{
+    QString command=PAFYCTOOLSGUI_COMMAND_CCFPGP;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    functionName+=QObject::tr("Writing python file");
+    if(QFile::exists(pythonFileName))
+    {
+        if(!QFile::remove(pythonFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing file:\n%1").arg(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(pythonFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError opening file:\n%1").arg(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+    strOut<<"# authors:"<<"\n";
+    strOut<<"# David Hernandez Lopez, david.hernandez@uclm.es"<<"\n";
+    strOut<<"# Miguel Angel Moreno Hidalgo, miguelangel.moreno@uclm.es"<<"\n";
+    strOut<<"# Diego Guerrero Sevilla, diego.guerrero@uclm.es"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"import optparse"<<"\n";
+    strOut<<"import numpy"<<"\n";
+    strOut<<"from osgeo import gdal, osr, ogr"<<"\n";
+    strOut<<"import os"<<"\n";
+    strOut<<"import json"<<"\n";
+    strOut<<"from urllib.parse import unquote"<<"\n";
+    strOut<<"import shutil"<<"\n";
+    strOut<<"from os.path import exists"<<"\n";
+    strOut<<"import datetime"<<"\n";
+    strOut<<"import glob"<<"\n";
+    strOut<<"from math import floor, ceil, sqrt, isnan, modf, trunc"<<"\n";
+    strOut<<"import csv"<<"\n";
+    strOut<<"import re"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"class OptionParser(optparse.OptionParser):"<<"\n";
+    strOut<<"    def check_required(self, opt):"<<"\n";
+    strOut<<"        option = self.get_option(opt)"<<"\n";
+    strOut<<"        # Assumes the option's 'default' is set to None!"<<"\n";
+    strOut<<"        if getattr(self.values, option.dest) is None:"<<"\n";
+    strOut<<"            self.error(\"%s option not supplied\" % option)"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def julian_date(day, month, year):"<<"\n";
+    strOut<<"    if month <= 2:  # january & february"<<"\n";
+    strOut<<"        year = year - 1.0"<<"\n";
+    strOut<<"        month = month + 12.0"<<"\n";
+    strOut<<"    jd = floor(365.25 * (year + 4716.0)) + floor(30.6001 * (month + 1.0)) + 2.0"<<"\n";
+    strOut<<"    jd = jd - floor(year / 100.0) + floor(floor(year / 100.0) / 4.0)"<<"\n";
+    strOut<<"    jd = jd + day - 1524.5"<<"\n";
+    strOut<<"    # jd = jd + day - 1524.5 + (utc_time)/24."<<"\n";
+    strOut<<"    mjd = jd - 2400000.5"<<"\n";
+    strOut<<"    return jd, mjd"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def julian_date_to_date(jd):"<<"\n";
+    strOut<<"    jd = jd + 0.5"<<"\n";
+    strOut<<"    F, I = modf(jd)"<<"\n";
+    strOut<<"    I = int(I)"<<"\n";
+    strOut<<"    A = trunc((I - 1867216.25)/36524.25)"<<"\n";
+    strOut<<"    if I > 2299160:"<<"\n";
+    strOut<<"        B = I + 1 + A - trunc(A / 4.)"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        B = I"<<"\n";
+    strOut<<"    C = B + 1524"<<"\n";
+    strOut<<"    D = trunc((C - 122.1) / 365.25)"<<"\n";
+    strOut<<"    E = trunc(365.25 * D)"<<"\n";
+    strOut<<"    G = trunc((C - E) / 30.6001)"<<"\n";
+    strOut<<"    day = C - E + F - trunc(30.6001 * G)"<<"\n";
+    strOut<<"    if G < 13.5:"<<"\n";
+    strOut<<"        month = G - 1"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        month = G - 13"<<"\n";
+    strOut<<"    if month > 2.5:"<<"\n";
+    strOut<<"        year = D - 4716"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        year = D - 4715"<<"\n";
+    strOut<<"    return year, month, day"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def is_number(n):"<<"\n";
+    strOut<<"    is_number = True"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        num = float(n)"<<"\n";
+    strOut<<"        # check for \"nan\" floats"<<"\n";
+    strOut<<"        is_number = num == num  # or use `math.isnan(num)`"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        is_number = False"<<"\n";
+    strOut<<"    return is_number"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def process(input_shp,"<<"\n";
+    strOut<<"            input_dsm,"<<"\n";
+    strOut<<"            input_dtm,"<<"\n";
+    strOut<<"            use_input_shp,"<<"\n";
+    strOut<<"            output_shp,"<<"\n";
+    strOut<<"            crop_minimum_height,"<<"\n";
+    strOut<<"            compute_GCC,"<<"\n";
+    strOut<<"            compute_volume,"<<"\n";
+    strOut<<"            str_date):"<<"\n";
+    strOut<<"    str_error = ''"<<"\n";
+    strOut<<"    if not exists(input_dsm):"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_dsm)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    if not exists(input_dtm):"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_dtm)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    if not exists(input_shp):"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    dsm_ds = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        dsm_ds = gdal.Open(input_dsm)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError opening dataset file:\\n{}\".format(input_dsm)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    dsm_rb = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        dsm_rb = dsm_ds.GetRasterBand(1)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError getting raster band from file:\\n{}\".format(input_dsm)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    dsm_geotransform = dsm_ds.GetGeoTransform()"<<"\n";
+    strOut<<"    dtm_ds = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        dtm_ds = gdal.Open(input_dtm)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError opening dataset file:\\n{}\".format(input_dtm)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    dtm_rb = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        dtm_rb = dtm_ds.GetRasterBand(1)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError getting raster band from file:\\n{}\".format(input_dtm)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    dtm_geotransform = dtm_ds.GetGeoTransform()"<<"\n";
+    strOut<<"    for i in range(len(dsm_geotransform)):"<<"\n";
+    strOut<<"        if abs(dsm_geotransform[i]-dtm_geotransform[i]) > 0.0000001:"<<"\n";
+    strOut<<"            str_error = \"Function process\""<<"\n";
+    strOut<<"            str_error += \"\\nDifferent georreferencing in DTM and DSM\""<<"\n";
+    strOut<<"            return str_error"<<"\n";
+    strOut<<"    dsm_crs = osr.SpatialReference()"<<"\n";
+    strOut<<"    dsm_crs.ImportFromWkt(dsm_ds.GetProjectionRef())"<<"\n";
+    strOut<<"    dtm_crs = osr.SpatialReference()"<<"\n";
+    strOut<<"    dtm_crs.ImportFromWkt(dtm_ds.GetProjectionRef())"<<"\n";
+    strOut<<"    dsm_crs_wkt = dsm_crs.ExportToWkt()"<<"\n";
+    strOut<<"    dtm_crs_wkt = dtm_crs.ExportToWkt()"<<"\n";
+    strOut<<"    if dsm_crs_wkt != dtm_crs_wkt:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nDifferent crs in DTM and DSM\""<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    ulx, xres, xskew, uly, yskew, yres = dsm_ds.GetGeoTransform()"<<"\n";
+    strOut<<"    lrx = ulx + (dsm_ds.RasterXSize * xres)"<<"\n";
+    strOut<<"    lry = uly + (dsm_ds.RasterYSize * yres)"<<"\n";
+    strOut<<"    out_ring = ogr.Geometry(ogr.wkbLinearRing)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, uly)"<<"\n";
+    strOut<<"    out_ring.AddPoint(lrx, uly)"<<"\n";
+    strOut<<"    out_ring.AddPoint(lrx, lry)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, lry)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, uly)"<<"\n";
+    strOut<<"    dems_poly = ogr.Geometry(ogr.wkbPolygon)"<<"\n";
+    strOut<<"    dems_poly.AddGeometry(out_ring)"<<"\n";
+    strOut<<"    rs_pixel_width = dsm_geotransform[1]"<<"\n";
+    strOut<<"    rs_pixel_height = dsm_geotransform[5]"<<"\n";
+    strOut<<"    dems_pixel_area = abs(rs_pixel_width) * abs(rs_pixel_height)"<<"\n";
+    strOut<<"    dems_x_origin = dsm_geotransform[0]"<<"\n";
+    strOut<<"    dems_y_origin = dsm_geotransform[3]"<<"\n";
+    strOut<<"    dems_pixel_width = dsm_geotransform[1]"<<"\n";
+    strOut<<"    dems_pixel_height = dsm_geotransform[5]"<<"\n";
+    strOut<<"    driver = ogr.GetDriverByName('ESRI Shapefile')"<<"\n";
+    strOut<<"    in_vec_ds = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        if not use_input_shp:"<<"\n";
+    strOut<<"            in_vec_ds = driver.Open(input_shp, 0)  # 0 means read-only. 1 means writeable."<<"\n";
+    strOut<<"        else:"<<"\n";
+    strOut<<"            in_vec_ds = driver.Open(input_shp, 1)  # 0 means read-only. 1 means writeable."<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError opening dataset file:\\n{}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    in_layer = in_vec_ds.GetLayer()"<<"\n";
+    strOut<<"    in_crs = in_layer.GetSpatialRef()"<<"\n";
+    strOut<<"    in_crs_wkt = in_crs.ExportToWkt()"<<"\n";
+    strOut<<"    in_geometry_type = in_layer.GetGeomType()"<<"\n";
+    strOut<<"    if in_geometry_type != ogr.wkbPolygon \\"<<"\n";
+    strOut<<"            and in_geometry_type != ogr.wkbMultiPolygon \\"<<"\n";
+    strOut<<"            and in_geometry_type != ogr.wkbPolygonM and in_geometry_type != ogr.wkbPolygonZM:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot Polygon geometry type in file:\\n{}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    out_vec_ds = None"<<"\n";
+    strOut<<"    out_layer = None"<<"\n";
+    strOut<<"    field_name_gcc = str_date + \"_gcc\""<<"\n";
+    strOut<<"    field_name_vol = str_date + \"_vol\""<<"\n";
+    strOut<<"    in_layer_definition = in_layer.GetLayerDefn()"<<"\n";
+    strOut<<"    if use_input_shp:"<<"\n";
+    strOut<<"        if compute_GCC:"<<"\n";
+    strOut<<"            field_id_index = in_layer_definition.GetFieldIndex(field_name_gcc)"<<"\n";
+    strOut<<"            if field_id_index == -1:"<<"\n";
+    strOut<<"                in_layer.CreateField(ogr.FieldDefn(field_name_gcc, ogr.OFTReal))"<<"\n";
+    strOut<<"        if compute_volume:"<<"\n";
+    strOut<<"            field_id_index = in_layer_definition.GetFieldIndex(field_name_vol)"<<"\n";
+    strOut<<"            if field_id_index == -1:"<<"\n";
+    strOut<<"                in_layer.CreateField(ogr.FieldDefn(field_name_vol, ogr.OFTReal))"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        out_ds = driver.CreateDataSource(output_shp)"<<"\n";
+    strOut<<"        out_layer = out_ds.CreateLayer(output_shp.split(\".\")[0], in_crs, in_geometry_type)"<<"\n";
+    strOut<<"        for i in range(0, in_layer_definition.GetFieldCount()):"<<"\n";
+    strOut<<"            fieldDefn = in_layer_definition.GetFieldDefn(i)"<<"\n";
+    strOut<<"            out_layer.CreateField(fieldDefn)"<<"\n";
+    strOut<<"        if compute_GCC:"<<"\n";
+    strOut<<"            out_layer.CreateField(ogr.FieldDefn(field_name_gcc, ogr.OFTReal))"<<"\n";
+    strOut<<"        if compute_volume:"<<"\n";
+    strOut<<"            out_layer.CreateField(ogr.FieldDefn(field_name_vol, ogr.OFTReal))"<<"\n";
+    strOut<<"    number_of_features = in_layer.GetFeatureCount()"<<"\n";
+    strOut<<"    cont_feature = 0"<<"\n";
+    strOut<<"    for feature in in_layer:"<<"\n";
+    strOut<<"        cont_feature = cont_feature + 1"<<"\n";
+    strOut<<"        print('Processing plant: {}, of {}'.format(str(cont_feature),"<<"\n";
+    strOut<<"                                                   str(number_of_features)))"<<"\n";
+    strOut<<"        plot_geometry_full = feature.GetGeometryRef().Clone()"<<"\n";
+    strOut<<"        crs_transform = None"<<"\n";
+    strOut<<"        if in_crs_wkt != dsm_crs_wkt:"<<"\n";
+    strOut<<"            crs_transform = osr.CoordinateTransformation(in_crs, dsm_crs)"<<"\n";
+    strOut<<"        if crs_transform:"<<"\n";
+    strOut<<"            plot_geometry_full.Transform(crs_transform)"<<"\n";
+    strOut<<"        plot_geometry = None"<<"\n";
+    strOut<<"        if dems_poly.Overlaps(plot_geometry_full) or dems_poly.Intersects(plot_geometry_full):"<<"\n";
+    strOut<<"            plot_geometry = plot_geometry_full.Intersection(dems_poly)"<<"\n";
+    strOut<<"        if dems_poly.Contains(plot_geometry_full):"<<"\n";
+    strOut<<"            plot_geometry = plot_geometry_full"<<"\n";
+    strOut<<"        if dems_poly.Within(plot_geometry_full):"<<"\n";
+    strOut<<"            plot_geometry = dems_poly"<<"\n";
+    strOut<<"        if not plot_geometry:"<<"\n";
+    strOut<<"            continue"<<"\n";
+    strOut<<"        plot_geometry = plot_geometry_full.Intersection(dems_poly)"<<"\n";
+    strOut<<"        plot_geometry_area = plot_geometry.GetArea()"<<"\n";
+    strOut<<"        if plot_geometry_area < (3 * dems_pixel_area):"<<"\n";
+    strOut<<"            continue"<<"\n";
+    strOut<<"        geom_points_x = []"<<"\n";
+    strOut<<"        geom_points_y = []"<<"\n";
+    strOut<<"        geom_type_name = plot_geometry.GetGeometryName().lower()"<<"\n";
+    strOut<<"        if \"multipolygon\" in geom_type_name:"<<"\n";
+    strOut<<"            for i in range(0, plot_geometry.GetGeometryCount()):"<<"\n";
+    strOut<<"                ring = plot_geometry.GetGeometryRef(i).GetGeometryRef(0)"<<"\n";
+    strOut<<"                numpoints = ring.GetPointCount()"<<"\n";
+    strOut<<"                for p in range(numpoints):"<<"\n";
+    strOut<<"                    fc, sc, tc = ring.GetPoint(p)"<<"\n";
+    strOut<<"                    geom_points_x.append(fc)"<<"\n";
+    strOut<<"                    geom_points_y.append(sc)"<<"\n";
+    strOut<<"        elif \"polygon\" in geom_type_name:"<<"\n";
+    strOut<<"            ring = plot_geometry.GetGeometryRef(0)"<<"\n";
+    strOut<<"            numpoints = ring.GetPointCount()"<<"\n";
+    strOut<<"            for p in range(numpoints):"<<"\n";
+    strOut<<"                fc, sc, tc = ring.GetPoint(p)"<<"\n";
+    strOut<<"                geom_points_x.append(fc)"<<"\n";
+    strOut<<"                geom_points_y.append(sc)"<<"\n";
+    strOut<<"        else:"<<"\n";
+    strOut<<"            # sys.exit(\"ERROR: Geometry needs to be either Polygon or Multipolygon\")"<<"\n";
+    strOut<<"            continue"<<"\n";
+    strOut<<"        plot_geom_x_min = min(geom_points_x)"<<"\n";
+    strOut<<"        plot_geom_x_max = max(geom_points_x)"<<"\n";
+    strOut<<"        plot_geom_y_min = min(geom_points_y)"<<"\n";
+    strOut<<"        plot_geom_y_max = max(geom_points_y)"<<"\n";
+    strOut<<"        # Specify offset and rows and columns to read"<<"\n";
+    strOut<<"        rs_x_off = int((plot_geom_x_min - dems_x_origin) / rs_pixel_width)"<<"\n";
+    strOut<<"        rs_y_off = int((dems_y_origin - plot_geom_y_max) / rs_pixel_width)"<<"\n";
+    strOut<<"        x_ul = dems_x_origin + rs_x_off * rs_pixel_width"<<"\n";
+    strOut<<"        y_ul = dems_y_origin - rs_y_off * rs_pixel_width"<<"\n";
+    strOut<<"        rs_x_count = int((plot_geom_x_max - plot_geom_x_min) / rs_pixel_width) + 1"<<"\n";
+    strOut<<"        rs_y_count = int((plot_geom_y_max - plot_geom_y_min) / rs_pixel_width) + 1"<<"\n";
+    strOut<<"        # Create memory target raster"<<"\n";
+    strOut<<"        target_dsm = gdal.GetDriverByName('MEM').Create('', rs_x_count, rs_y_count, 1, gdal.GDT_Byte)"<<"\n";
+    strOut<<"        target_dsm.SetGeoTransform(("<<"\n";
+    strOut<<"            plot_geom_x_min, rs_pixel_width, 0,"<<"\n";
+    strOut<<"            plot_geom_y_max, 0, rs_pixel_height,"<<"\n";
+    strOut<<"        ))"<<"\n";
+    strOut<<"        target_dtm = gdal.GetDriverByName('MEM').Create('', rs_x_count, rs_y_count, 1, gdal.GDT_Byte)"<<"\n";
+    strOut<<"        target_dtm.SetGeoTransform(("<<"\n";
+    strOut<<"            plot_geom_x_min, rs_pixel_width, 0,"<<"\n";
+    strOut<<"            plot_geom_y_max, 0, rs_pixel_height,"<<"\n";
+    strOut<<"        ))"<<"\n";
+    strOut<<"        # Create for target raster the same projection as for the value raster"<<"\n";
+    strOut<<"        raster_srs = osr.SpatialReference()"<<"\n";
+    strOut<<"        raster_srs.ImportFromWkt(dsm_ds.GetProjectionRef())"<<"\n";
+    strOut<<"        target_dsm.SetProjection(raster_srs.ExportToWkt())"<<"\n";
+    strOut<<"        target_dtm.SetProjection(raster_srs.ExportToWkt())"<<"\n";
+    strOut<<"        feature_drv = ogr.GetDriverByName('ESRI Shapefile')"<<"\n";
+    strOut<<"        feature_ds= feature_drv.CreateDataSource(\"/vsimem/memory_name.shp\")"<<"\n";
+    strOut<<"        # geometryType = plot_geometry.getGeometryType()"<<"\n";
+    strOut<<"        feature_layer = feature_ds.CreateLayer(\"layer\", dsm_crs, geom_type=plot_geometry.GetGeometryType())"<<"\n";
+    strOut<<"        featureDefnHeaders = feature_layer.GetLayerDefn()"<<"\n";
+    strOut<<"        out_feature = ogr.Feature(featureDefnHeaders)"<<"\n";
+    strOut<<"        out_feature.SetGeometry(plot_geometry)"<<"\n";
+    strOut<<"        feature_layer.CreateFeature(out_feature)"<<"\n";
+    strOut<<"        feature_ds.FlushCache()"<<"\n";
+    strOut<<"        # Rasterize zone polygon to raster dsm"<<"\n";
+    strOut<<"        gdal.RasterizeLayer(target_dsm, [1], feature_layer, burn_values=[1])"<<"\n";
+    strOut<<"        feature_dsm_data = dsm_rb.ReadAsArray(rs_x_off, rs_y_off, rs_x_count, rs_y_count).astype(float)"<<"\n";
+    strOut<<"        feature_dsm_band_mask = target_dsm.GetRasterBand(1)"<<"\n";
+    strOut<<"        feature_dsm_data_mask = feature_dsm_band_mask.ReadAsArray(0, 0, rs_x_count, rs_y_count).astype(float)"<<"\n";
+    strOut<<"        # Mask zone of raster dsm"<<"\n";
+    strOut<<"        feature_dsm_raster_array = numpy.ma.masked_array(feature_dsm_data, numpy.logical_not(feature_dsm_data_mask))"<<"\n";
+    strOut<<"        dsm_first_indexes, dsm_second_indexes = feature_dsm_raster_array.nonzero()"<<"\n";
+    strOut<<"        # Rasterize zone polygon to raster dtm"<<"\n";
+    strOut<<"        gdal.RasterizeLayer(target_dtm, [1], feature_layer, burn_values=[1])"<<"\n";
+    strOut<<"        feature_dtm_data = dtm_rb.ReadAsArray(rs_x_off, rs_y_off, rs_x_count, rs_y_count).astype(float)"<<"\n";
+    strOut<<"        feature_dtm_band_mask = target_dtm.GetRasterBand(1)"<<"\n";
+    strOut<<"        feature_dtm_data_mask = feature_dtm_band_mask.ReadAsArray(0, 0, rs_x_count, rs_y_count).astype(float)"<<"\n";
+    strOut<<"        # Mask zone of raster dsm"<<"\n";
+    strOut<<"        feature_dtm_raster_array = numpy.ma.masked_array(feature_dtm_data, numpy.logical_not(feature_dtm_data_mask))"<<"\n";
+    strOut<<"        dtm_first_indexes, dtm_second_indexes = feature_dtm_raster_array.nonzero()"<<"\n";
+    strOut<<"        values = []"<<"\n";
+    strOut<<"        mean_value = 0."<<"\n";
+    strOut<<"        min_value = 10000000."<<"\n";
+    strOut<<"        max_value = -10000000."<<"\n";
+    strOut<<"        number_of_pixels_in_frame = 0"<<"\n";
+    strOut<<"        number_of_plant_pixels_in_frame = 0"<<"\n";
+    strOut<<"        volume = 0"<<"\n";
+    strOut<<"        for i in range(len(dsm_first_indexes)):"<<"\n";
+    strOut<<"            fi = dsm_first_indexes[i]"<<"\n";
+    strOut<<"            si = dsm_second_indexes[i]"<<"\n";
+    strOut<<"            number_of_pixels_in_frame = number_of_pixels_in_frame + 1"<<"\n";
+    strOut<<"            if not fi in dtm_first_indexes:"<<"\n";
+    strOut<<"                continue"<<"\n";
+    strOut<<"            if not si in dtm_second_indexes:"<<"\n";
+    strOut<<"                continue"<<"\n";
+    strOut<<"            # check mask"<<"\n";
+    strOut<<"            dsm_height = feature_dsm_raster_array[dsm_first_indexes[i]][dsm_second_indexes[i]]"<<"\n";
+    strOut<<"            dtm_height = feature_dtm_raster_array[dsm_first_indexes[i]][dsm_second_indexes[i]]"<<"\n";
+    strOut<<"            value = dsm_height - dtm_height"<<"\n";
+    strOut<<"            if value >= crop_minimum_height:"<<"\n";
+    strOut<<"                values.append(value)"<<"\n";
+    strOut<<"                if value < min_value:"<<"\n";
+    strOut<<"                    min_value = value"<<"\n";
+    strOut<<"                if value > max_value:"<<"\n";
+    strOut<<"                    max_value = value"<<"\n";
+    strOut<<"                mean_value = mean_value + value"<<"\n";
+    strOut<<"                number_of_plant_pixels_in_frame = number_of_plant_pixels_in_frame + 1"<<"\n";
+    strOut<<"                volume = volume + dems_pixel_area * value"<<"\n";
+    strOut<<"        gcc = (float(number_of_plant_pixels_in_frame)) / (float(number_of_pixels_in_frame))"<<"\n";
+    strOut<<"        if compute_GCC:"<<"\n";
+    strOut<<"            feature.SetField(field_name_gcc, gcc)"<<"\n";
+    strOut<<"        if compute_volume:"<<"\n";
+    strOut<<"            feature.SetField(field_name_vol, volume * 1000.0)"<<"\n";
+    strOut<<"        if not use_input_shp:"<<"\n";
+    strOut<<"            out_layer.CreateFeature(feature)"<<"\n";
+    strOut<<"        else:"<<"\n";
+    strOut<<"            in_layer.SetFeature(feature)"<<"\n";
+    strOut<<"    in_vec_ds = None"<<"\n";
+    strOut<<"    out_vec_ds = None"<<"\n";
+    strOut<<"    return str_error"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def main():"<<"\n";
+    strOut<<"    # =================="<<"\n";
+    strOut<<"    # parse command line"<<"\n";
+    strOut<<"    # =================="<<"\n";
+    strOut<<"    usage = \"usage: %prog [options] \""<<"\n";
+    strOut<<"    parser = OptionParser(usage=usage)"<<"\n";
+    strOut<<"    parser.add_option(\"--input_crops_frames_shp\", dest=\"input_crops_frames_shp\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Crops frames shapefile\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--input_dsm\", dest=\"input_dsm\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"DSM geotiff\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--input_dtm\", dest=\"input_dtm\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"DTM geotiff\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--crop_minimum_height\", dest=\"crop_minimum_height\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Crop minimum height, in meters\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--output_shp\", dest=\"output_shp\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Output shapefile or none for use input shapefile\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--compute_GCC\", dest=\"compute_GCC\", action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"Compute GCC: 1-yes, 0-No\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--compute_volume\", dest=\"compute_volume\", action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"Compute volume: 1-yes, 0-No\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--date_from_dem_files\", dest=\"date_from_dem_files\", action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"Read date from DEM files: 1-yes, 0-No\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--dem_files_string_separator\", dest=\"dem_files_string_separator\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"DEM files string separator\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--dem_files_date_string_position\", dest=\"dem_files_date_string_position\", action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"DEM files date string position\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--date_format\", dest=\"date_format\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Date format (%Y%m%d, ...)\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--date\", dest=\"date\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Date value no from DEM files\", default=None)"<<"\n";
+    strOut<<"    (options, args) = parser.parse_args()"<<"\n";
+    strOut<<"    if not options.input_crops_frames_shp \\"<<"\n";
+    strOut<<"        or not options.input_dsm \\"<<"\n";
+    strOut<<"        or not options.input_dtm \\"<<"\n";
+    strOut<<"        or not options.crop_minimum_height \\"<<"\n";
+    strOut<<"        or not options.output_shp \\"<<"\n";
+    strOut<<"        or not options.compute_GCC \\"<<"\n";
+    strOut<<"        or not options.compute_volume \\"<<"\n";
+    strOut<<"        or not options.date_from_dem_files \\"<<"\n";
+    strOut<<"        or not options.dem_files_string_separator \\"<<"\n";
+    strOut<<"        or not options.dem_files_date_string_position \\"<<"\n";
+    strOut<<"        or not options.date_format \\"<<"\n";
+    strOut<<"        or not options.date :"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    input_crops_shapefile = options.input_crops_frames_shp"<<"\n";
+    strOut<<"    if not exists(input_crops_shapefile):"<<"\n";
+    strOut<<"        print(\"Error:\\nInput crops shapefile does not exists:\\n{}\".format(input_crops_shapefile))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    input_dsm = options.input_dsm"<<"\n";
+    strOut<<"    if not exists(input_dsm):"<<"\n";
+    strOut<<"        print(\"Error:\\nInput DSM does not exists:\\n{}\".format(input_dsm))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    input_dtm = options.input_dtm"<<"\n";
+    strOut<<"    if not exists(input_dtm):"<<"\n";
+    strOut<<"        print(\"Error:\\nInput DTM does not exists:\\n{}\".format(input_dtm))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    crop_minimum_height = options.crop_minimum_height"<<"\n";
+    strOut<<"    if not is_number(crop_minimum_height):"<<"\n";
+    strOut<<"        print(\"Error:\\nInvalid value for crops minimum height: {}\"."<<"\n";
+    strOut<<"              format(crop_minimum_height))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    crop_minimum_height = float(crop_minimum_height)"<<"\n";
+    strOut<<"    compute_GCC = False"<<"\n";
+    strOut<<"    if options.compute_GCC == 1:"<<"\n";
+    strOut<<"        compute_GCC = True"<<"\n";
+    strOut<<"    compute_volume = False"<<"\n";
+    strOut<<"    if options.compute_volume == 1:"<<"\n";
+    strOut<<"        compute_volume = True"<<"\n";
+    strOut<<"    if not compute_GCC and not compute_volume:"<<"\n";
+    strOut<<"        print(\"Error:\\nNothing to do, no GCC or volume computation\")"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    use_input_shp = True"<<"\n";
+    strOut<<"    output_shp = options.output_shp"<<"\n";
+    strOut<<"    if output_shp != 'none':"<<"\n";
+    strOut<<"        use_input_shp = False"<<"\n";
+    strOut<<"    date_from_dem_files = False"<<"\n";
+    strOut<<"    if options.date_from_dem_files == 1:"<<"\n";
+    strOut<<"        date_from_dem_files = True"<<"\n";
+    strOut<<"    date_format = options.date_format.strip()"<<"\n";
+    strOut<<"    if not date_from_dem_files:"<<"\n";
+    strOut<<"        if options.date == 'none':"<<"\n";
+    strOut<<"            print(\"Error:\\nDate must be a value if not read from dems file name\")"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        date = datetime.datetime.strptime(options.date, date_format)"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        dem_files_string_separator = options.dem_files_string_separator"<<"\n";
+    strOut<<"        dem_files_date_string_position = options.dem_files_date_string_position"<<"\n";
+    strOut<<"        dsm_file_name_without_path = os.path.basename(input_dsm)"<<"\n";
+    strOut<<"        dsm_file_name_values = dsm_file_name_without_path.split(dem_files_string_separator)"<<"\n";
+    strOut<<"        if dem_files_date_string_position < 0 or dem_files_date_string_position > len(dsm_file_name_values):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for dsm files date string position: {}\"."<<"\n";
+    strOut<<"                  format(str(dem_files_date_string_position)))"<<"\n";
+    strOut<<"        str_date = dsm_file_name_values[dem_files_date_string_position-1]"<<"\n";
+    strOut<<"        date_dsm = datetime.datetime.strptime(str_date, date_format)"<<"\n";
+    strOut<<"        dtm_file_name_without_path = os.path.basename(input_dtm)"<<"\n";
+    strOut<<"        dtm_file_name_values = dtm_file_name_without_path.split(dem_files_string_separator)"<<"\n";
+    strOut<<"        if dem_files_date_string_position < 0 or dem_files_date_string_position > len(dtm_file_name_values):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for dtm files date string position: {}\"."<<"\n";
+    strOut<<"                  format(str(dem_files_date_string_position)))"<<"\n";
+    strOut<<"        str_date = dtm_file_name_values[dem_files_date_string_position-1]"<<"\n";
+    strOut<<"        date_dtm = datetime.datetime.strptime(str_date, date_format)"<<"\n";
+    strOut<<"        if date_dsm != date_dtm:"<<"\n";
+    strOut<<"            print(\"Error:\\nDifferents dates from DSM and DTM\")"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        date = date_dsm"<<"\n";
+    strOut<<"    str_date = str(date.strftime('%Y')[2:4]) + str(date.strftime('%m')) + str(date.strftime('%d'))"<<"\n";
+    strOut<<"    str_error = process(input_crops_shapefile,"<<"\n";
+    strOut<<"                        input_dsm,"<<"\n";
+    strOut<<"                        input_dtm,"<<"\n";
+    strOut<<"                        use_input_shp,"<<"\n";
+    strOut<<"                        output_shp,"<<"\n";
+    strOut<<"                        crop_minimum_height,"<<"\n";
+    strOut<<"                        compute_GCC,"<<"\n";
+    strOut<<"                        compute_volume,"<<"\n";
+    strOut<<"                        str_date)"<<"\n";
+    strOut<<"    if str_error:"<<"\n";
+    strOut<<"        print(\"Error:\\n{}\".format(str_error))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    print(\"... Process finished\")"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"if __name__ == '__main__':"<<"\n";
+    strOut<<"    main()"<<"\n";
+
+    file.close();
+    return(true);
+}
+
 void PAFyCToolsDialog::on_qgisPathPushButton_clicked()
 {
     QString functionName="on_qgisPathPushButton_clicked";
@@ -1172,6 +2007,11 @@ void PAFyCToolsDialog::on_ProgressExternalProcessDialog_closed()
     QDateTime finalDateTime=QDateTime::currentDateTime();
     mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
     disconnect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+    for(int npf=0;npf<mPythonFiles.size();npf++)
+    {
+        QFile::remove(mPythonFiles[npf]);
+    }
+    mPythonFiles.clear();
     if(mPtrProgressExternalProcessDialog->getState()==PROCESSDIALOG_STATE_ERROR)
     {
         QString title=mProgressExternalProcessTitle;
@@ -1421,6 +2261,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PF,Qt::CaseInsensitive)==0)
     {
         if(!process_plppc_pf(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_CCFPGP,Qt::CaseInsensitive)==0)
+    {
+        if(!process_ccfpgp(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")

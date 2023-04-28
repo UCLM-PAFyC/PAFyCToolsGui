@@ -40,6 +40,9 @@ private slots:
 
 private:
     bool initialize(QString& strError);
+    bool process_ccfpgp(QString& qgisPath,
+                          QString& outputPath,
+                          QString& strError);
     bool process_plppc_pp(QString& qgisPath,
                           QString& outputPath,
                           QString& strError);
@@ -53,6 +56,8 @@ private:
                    bool onlyContent=false);
 
 private:
+    bool writePythonProgramCropsCharacterizationFromPhotogrammetricGeomaticProducts(QString pythonFileName,
+                                                                                    QString &strError);
     Ui::PAFyCToolsDialog *ui;
     QSettings *mPtrSettings;
     QString mBasePath;
@@ -69,6 +74,7 @@ private:
     QString mOutputPath;
     QVector<QString> mResultFiles;
     QMap<QString,QVector<QString> > mModelManagementCommandsByCommand;
+    QVector<QString> mPythonFiles;
 };
 
 #endif // PAFYCTOOLSDIALOG_H
