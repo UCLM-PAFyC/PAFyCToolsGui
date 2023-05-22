@@ -41,7 +41,7 @@ void initialize(bool &isInitialized,
     QDate initialLicenseDate=QDate::fromString(IPYPROJECT_LICENSE_INITIAL_DATE,IPYPROJECT_DATE_FORMAT);
     QDate finalLicenseDate=QDate::fromString(IPYPROJECT_LICENSE_FINAL_DATE,IPYPROJECT_DATE_FORMAT);
     bool checkKey=false;
-    bool checkDate=true;
+    bool checkDate=false;
     isInitialized=true;
     if(checkKey||checkDate)
     {
