@@ -709,8 +709,8 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         set LASTHIN_ADAPTATIVE_2D=0.2
         set LASTHIN_ADAPTATIVE_H=0.2
         set LASNOISE_STEP_2D=0.05
-        set LASNOISE_STEP_H=0.05
-        set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10
+        set LASNOISE_STEP_H=0.05 # lo he cambiado a 1.2
+        set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10 # lo he cambiado a 100
         set VINE_H_IGNORE_FOOT=0.1
         set VINE_H_TRUNK_MINIMUM_HEIGHT=0.1
         set VINE_H_TRUNK_MAXIMUM_HEIGHT=0.4
@@ -814,8 +814,8 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         strOut<<"set LASTHIN_ADAPTATIVE_2D=0.2"<<"\n";
         strOut<<"set LASTHIN_ADAPTATIVE_H=0.2"<<"\n";
         strOut<<"set LASNOISE_STEP_2D=0.05"<<"\n";
-        strOut<<"set LASNOISE_STEP_H=0.05"<<"\n";
-        strOut<<"set LASNOISE_MINIMUN_NUMBER_OF_POINTS=10"<<"\n";
+        strOut<<"set LASNOISE_STEP_H=1.20"<<"\n";
+        strOut<<"set LASNOISE_MINIMUN_NUMBER_OF_POINTS=100"<<"\n";
         strOut<<"set VINE_H_IGNORE_FOOT=0.1"<<"\n";
         strOut<<"set VINE_H_TRUNK_MINIMUM_HEIGHT=0.1"<<"\n";
         strOut<<"set VINE_H_TRUNK_MAXIMUM_HEIGHT=0.4"<<"\n";
