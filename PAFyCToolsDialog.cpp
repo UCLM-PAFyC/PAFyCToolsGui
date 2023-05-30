@@ -149,6 +149,7 @@ bool PAFyCToolsDialog::initialize(QString &strError)
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
+    mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL);
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PP);
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PL);
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PF);
@@ -1021,6 +1022,404 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
     mInitialDateTime=QDateTime::currentDateTime();
     mProgressExternalProcessTitle=command;
     mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+    return(true);
+}
+
+bool PAFyCToolsDialog::process_plppc_pp_pwol(QString &qgisPath,
+                                             QString &outputPath,
+                                             QString &strError)
+{
+    QString command=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,pointCloudFileName,roiShapefileName,inputPath,latsShapefile,parameterCode,lastoolsPath,lidarFilesPath;
+    int epsgCode;
+    int intValue;
+    double dblValue;
+    bool okToNumber;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_POINT_CLOUD_FILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    pointCloudFileName=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_ROI_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    roiShapefileName=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_CRS_EPSG_CODE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    int crsEpsgCode,verticalCrsEpsgCode=-1;
+    if(strValue.contains("+"))
+    {
+        QStringList strCrsValues=strValue.split("+");
+        if(strCrsValues.size()!=2)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nInvalid value for compound crs: %1\nin file:\n%2")
+                    .arg(parameterCode).arg(strValue).arg(mPtrParametersManager->getFileName());
+            return(false);
+        }
+        strValue=strCrsValues[0].trimmed();
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        crsEpsgCode=intValue;
+        strValue=strCrsValues[1].trimmed();
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        verticalCrsEpsgCode=intValue;
+    }
+    else
+    {
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        crsEpsgCode=intValue;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_LASTOOLS_PATH;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    lastoolsPath=strValue;
+    if(!auxDir.exists(lastoolsPath))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists path:\n%2")
+                .arg(parameterCode).arg(lastoolsPath);
+        return(false);
+    }
+    QString lasinfoFileName=lastoolsPath+"/"+PAFYCTOOLSGUI_LASINFO_FILE;
+    if(!QFile::exists(lasinfoFileName))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(lasinfoFileName);
+        strError+=QObject::tr("\nWrong LAStools path:\n%1")
+                .arg(lastoolsPath);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_GROUND_CLASSIFICATION_STEP;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double groundClassicationStep=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_ADAPTATIVE_THINNING_2D;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double adaptativeThinning2d=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_ADAPTATIVE_THINNING_H;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double adaptativeThinningH=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_TRUNK_BASE_MININUM_HEIGHT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double trunkBaseMinimumHeight=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_TRUNK_BASE_MAXINUM_HEIGHT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double trunkBaseMaximumHeight=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_TRUNK_HIGHER_MINIMUM_HEIGHT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double trunkHigherMinimumHeight=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_TRUNK_HIGHER_MAXIMUM_HEIGHT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double trunkHigherMaximumHeight=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_TRUNK_HIGHER_RASTER_FILTER_GSD;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double trunkHigherRasterFilterGsd=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_TRUNK_BASE_RASTER_FILTER_GSD;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double trunkBaseRasterFilterGsd=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_DTM_GSD;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double dtmGsd=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_TAG_TRUNK_BASE_RASTER_FILTER_MIN_PIXELS;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    intValue=strValue.toInt(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an interger")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double trunkBaseMinimumArea=pow(trunkBaseRasterFilterGsd,2.0)*((double)intValue);
+
+
+
+
+
+
+    //groundClassicationStep,adaptativeThinning2d,adaptativeThinningH
+    //trunkBaseMinimumHeight,trunkBaseMaximumHeight
+    //trunkHigherMinimumHeight,trunkHigherMaximumHeight
+    //trunkHigherRasterFilterGsd,trunkBaseRasterFilterGsd
+    //dtmGsd,trunkBaseMinimumArea
     return(true);
 }
 
@@ -2239,6 +2638,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PP,Qt::CaseInsensitive)==0)
     {
         if(!process_plppc_pp(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL,Qt::CaseInsensitive)==0)
+    {
+        if(!process_plppc_pp_pwol(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")

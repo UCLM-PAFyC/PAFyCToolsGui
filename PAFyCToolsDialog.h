@@ -46,6 +46,9 @@ private:
     bool process_plppc_pp(QString& qgisPath,
                           QString& outputPath,
                           QString& strError);
+    bool process_plppc_pp_pwol(QString& qgisPath,
+                               QString& outputPath,
+                               QString& strError);
     bool process_plppc_pl(QString& qgisPath,
                           QString& outputPath,
                           QString& strError);
