@@ -16,6 +16,7 @@
 #define PAFYCTOOLSGUI_PROGRAM_CONSOLE_FILE_NAME "pafyctoolsconsole.exe"
 
 #define PAFYCTOOLSGUI_QGIS_BAT_ENVIRONMENT "/bin/o4w_env.bat"
+#define PAFYCTOOLSGUI_QGIS_PYTHON_GDAL_POLYGONIZE "/apps/Python39/Scripts/gdal_polygonize.py"
 
 #define PAFYCTOOLSGUI_DATE_STRING_FORMAT "yyyy-MM-dd"
 #define PAFYCTOOLSGUI_DATE_TIME_STRING_FORMAT "yyyy-MM-dd HH:mm:ss"
@@ -25,7 +26,7 @@
 #define PAFYCTOOLSGUI_COMMAND_PLPPC "Plants location from photogrammetric point cloud"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL "Plants location from photogrammetric point cloud: 1. Preprocessing plants without leaves"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_HELP_PDF_FILE "PlantsLocationFromPhotogrammetricPointCloud_1_PreprocessingPlantsWithoutLeaves.pdf"
-#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE "1_plppc_preprocessing.bat"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE "1_plppc_preprocessing_pwol.bat"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_LASTOOLS_1 "1_plppc_preprocessing_pwol_lastools_1.bat"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_GDAL_1 "1_plppc_preprocessing_pwol_gdal_1.bat"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_LASTOOLS_2 "1_plppc_preprocessing_pwol_lastools_2.bat"

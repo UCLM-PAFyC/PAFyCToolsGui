@@ -91,6 +91,15 @@ bool PAFyCToolsDialog::initialize(QString &strError)
             mPtrSettings->sync();
             return(false);
         }
+        QString qgisPythonGdalPolygonizeFileName=qgisPath+PAFYCTOOLSGUI_QGIS_PYTHON_GDAL_POLYGONIZE;
+        if(!QFile::exists(qgisPythonGdalPolygonizeFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("Not exists QGIS python GDAL polygonize file:\n%1").arg(qgisPythonGdalPolygonizeFileName);
+            mPtrSettings->setValue(PAFYCTOOLSGUI_SETTINGS_TAG_QGIS_PATH,"");
+            mPtrSettings->sync();
+            return(false);
+        }
         ui->qgisPathLineEdit->setText(qgisPath);
     }
     QString outputPath=mPtrSettings->value(PAFYCTOOLSGUI_SETTINGS_TAG_OUTPUT_PATH).toString();
@@ -1410,16 +1419,382 @@ bool PAFyCToolsDialog::process_plppc_pp_pwol(QString &qgisPath,
     }
     double trunkBaseMinimumArea=pow(trunkBaseRasterFilterGsd,2.0)*((double)intValue);
 
+    QString processFileNameLastools_1=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_LASTOOLS_1;
+    {
+        if(QFile::exists(processFileNameLastools_1))
+        {
+            if(!QFile::remove(processFileNameLastools_1))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(processFileNameLastools_1);
+                return(false);
+            }
+        }
+        QFile file(processFileNameLastools_1);
+        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError opening file:\n%1").arg(processFileNameLastools_1);
+            return(false);
+        }
+        QTextStream strOut(&file);
+        /*
+        echo off
+        set PATH=%PATH%;"C:/LAStools/bin"
+        set PROCESS_PATH=D:/PAFyCToolsGui/230329_FuenteAlamo_Vid_A6000/20230529
+        set INPUT_POINT_CLOUD_FILE=C:/DHL/PAFyCToolsGui/230329_FuenteAlamo_Vid_A6000/input_data/230329_FuenteAlamo_Vid_A6000_PC_25830_gcp.laz
+        set INPUT_ROI_SHAPEFILE=C:/DHL/PAFyCToolsGui/230329_FuenteAlamo_Vid_A6000/input_data/FuenteAlamo_25830.shp
+        set OUTPUT_POINT_CLOUD_CLIPPED_FILE=%PROCESS_PATH%\230329_FuenteAlamo_Vid_A6000_PC_25830_gcp_clipped.laz
+        cd /d "%PROCESS_PATH%"
+        set TILE_SIZE=10
+        set TILE_BUFFER=1
+        set GROUND_STEP_SIZE=0.5
+        set CORES=8
+        set LASTHIN_ADAPTATIVE_2D=0.20
+        set LASTHIN_ADAPTATIVE_H=0.04
+        set VINE_TRUNK_BASE_MINIMUM_HEIGHT=0.01
+        set VINE_TRUNK_BASE_MAXIMUM_HEIGHT=0.2
+        set VINE_TRUNK_HIGHER_MINIMUM_HEIGHT=0.3
+        set VINE_TRUNK_HIGHER_MAXIMUM_HEIGHT=1.2
+        set VINE_FILTER_RASTER_STEP=0.4
+        set VINE_FILTER_RASTER_FILE_NAME=vines.tif
+        set VINE_RASTER_TRUNK_STEP=0.02
+        set DTM_STEP=0.10
+        set OUTPUT_DTM_FILE="230329_FuenteAlamo_Vid_A6000_PC_25830_gcp_dtm_10cm.tif"
+        lasclip64 -v -i "%INPUT_POINT_CLOUD_FILE%" ^
+                  -poly "%INPUT_ROI_SHAPEFILE%" ^
+                  -o "%OUTPUT_POINT_CLOUD_CLIPPED_FILE%"
+        rmdir temp_tiles /s /q
+        mkdir temp_tiles
+        lastile -v -i "%OUTPUT_POINT_CLOUD_CLIPPED_FILE%" ^
+                -reversible -tile_size %TILE_SIZE% -buffer %TILE_BUFFER% ^
+                -o temp_tiles\tile.laz -olaz
+        rmdir temp_tiles_ground /s /q
+        mkdir temp_tiles_ground
+        lasground_new -v -i temp_tiles\tile*.laz ^
+                  -step %GROUND_STEP_SIZE% -coarse ^
+                  -odir temp_tiles_ground -olaz ^
+                  -cores %CORES%
+        rmdir temp_tiles /s /q
+        rmdir temp_tiles_ground_thinned /s /q
+        mkdir temp_tiles_ground_thinned
+        lasthin64 -v -i temp_tiles_ground\tile*.laz ^
+                  -ignore_class 1 -adaptive %LASTHIN_ADAPTATIVE_H% %LASTHIN_ADAPTATIVE_2D% ^
+                  -odir temp_tiles_ground_thinned -olaz ^
+                  -cores %CORES%
+        rmdir temp_tiles_ground /s /q
+        rmdir temp_tiles_ground_thinned_height /s /q
+        mkdir temp_tiles_ground_thinned_height
+        lasheight64 -v -i temp_tiles_ground_thinned\tile*.laz ^
+                  -ignore_class 2 -classify_below %VINE_TRUNK_BASE_MINIMUM_HEIGHT% 0 ^
+                  -classify_between %VINE_TRUNK_BASE_MINIMUM_HEIGHT% %VINE_TRUNK_BASE_MAXIMUM_HEIGHT% 3 ^
+                  -classify_between %VINE_TRUNK_HIGHER_MINIMUM_HEIGHT% %VINE_TRUNK_HIGHER_MAXIMUM_HEIGHT% 4 ^
+                  -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^
+                  -odir temp_tiles_ground_thinned_height -olaz ^
+                  -cores %CORES%
+        rmdir temp_tiles_ground_thinned /s /q
+        lastile -i temp_tiles_ground_thinned_height\tile*.laz ^
+                -reverse_tiling ^
+                -o "%OUTPUT_POINT_CLOUD_CLIPPED_FILE%" -odix _ground -olaz
+        rmdir temp_tiles_ground_thinned_height /s /q
+        lasgrid64 -v -i *_ground.laz ^
+                  -keep_class 4 -step %VINE_FILTER_RASTER_STEP% -counter_16bit ^
+                  -o %VINE_FILTER_RASTER_FILE_NAME%
+        las2dem64 -v -i *_ground.laz ^
+                  -step %DTM_STEP% -keep_class 2 ^
+                  -o %OUTPUT_DTM_FILE%
+        */
+        strOut<<"echo off"<<"\n";
+        strOut<<"set PATH=%PATH%;\""<<lastoolsPath<<"\"\n";
+        strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+        strOut<<"set INPUT_POINT_CLOUD_FILE="<<pointCloudFileName<<"\n";
+        strOut<<"set INPUT_ROI_SHAPEFILE="<<roiShapefileName<<"\n";
+        //    QString pointCloudClippedFileName=QFileInfo(pointCloudFileName).absolutePath();
+        QString pointCloudClippedFileName=outputPath;
+        pointCloudClippedFileName+="/";
+        QString pointCloudClippedFileNameWithoutPath=QFileInfo(pointCloudFileName).completeBaseName();
+        pointCloudClippedFileNameWithoutPath+="_clipped.laz";
+        pointCloudClippedFileName+=pointCloudClippedFileNameWithoutPath;
+        if(QFile::exists(pointCloudClippedFileName))
+        {
+            if(!QFile::remove(pointCloudClippedFileName))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(pointCloudClippedFileName);
+                file.close();
+                return(false);
+            }
+        }
+        strOut<<"set OUTPUT_POINT_CLOUD_CLIPPED_FILE=%PROCESS_PATH%\\"<<pointCloudClippedFileNameWithoutPath<<"\n";
+        strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+        strOut<<"set TILE_SIZE=10"<<"\n";
+        strOut<<"set TILE_BUFFER=1"<<"\n";
+        strOut<<"set GROUND_STEP_SIZE="<<QString::number(groundClassicationStep,'f',3)<<"\n";
+        strOut<<"set CORES=8"<<"\n";
+        strOut<<"set LASTHIN_ADAPTATIVE_2D="<<QString::number(adaptativeThinning2d,'f',3)<<"\n";
+        strOut<<"set LASTHIN_ADAPTATIVE_H="<<QString::number(adaptativeThinningH,'f',3)<<"\n";
+        strOut<<"set VINE_TRUNK_BASE_MINIMUM_HEIGHT="<<QString::number(trunkBaseMinimumHeight,'f',3)<<"\n";
+        strOut<<"set VINE_TRUNK_BASE_MAXIMUM_HEIGHT="<<QString::number(trunkBaseMaximumHeight,'f',3)<<"\n";
+        strOut<<"set VINE_TRUNK_HIGHER_MINIMUM_HEIGHT="<<QString::number(trunkHigherMinimumHeight,'f',3)<<"\n";
+        strOut<<"set VINE_TRUNK_HIGHER_MAXIMUM_HEIGHT="<<QString::number(trunkHigherMaximumHeight,'f',3)<<"\n";
+        strOut<<"set VINE_FILTER_RASTER_STEP="<<QString::number(trunkHigherRasterFilterGsd,'f',3)<<"\n";
+        strOut<<"set VINE_FILTER_RASTER_FILE_NAME=vines.tif"<<"\n";
+        strOut<<"set VINE_RASTER_TRUNK_STEP="<<QString::number(trunkBaseRasterFilterGsd,'f',3)<<"\n";
+        strOut<<"set DTM_STEP="<<QString::number(dtmGsd,'f',2)<<"\n";
+        QString dtmFileName=QFileInfo(pointCloudFileName).completeBaseName();
+        dtmFileName+="_dtm_";
+        dtmFileName+=QString::number(qRound(dtmGsd*100.));
+        dtmFileName+="cm.tif";
+        strOut<<"set OUTPUT_DTM_FILE=\""<<dtmFileName<<"\"\n";
+        strOut<<"lasclip64 -v -i \"%INPUT_POINT_CLOUD_FILE%\" ^"<<"\n";
+        strOut<<"          -poly \"%INPUT_ROI_SHAPEFILE%\" ^"<<"\n";
+        strOut<<"          -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\""<<"\n";
+        strOut<<"rmdir temp_tiles /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles"<<"\n";
+        strOut<<"lastile -v -i \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\" ^"<<"\n";
+        strOut<<"        -reversible -tile_size %TILE_SIZE% -buffer %TILE_BUFFER% ^"<<"\n";
+        strOut<<"        -o temp_tiles\\tile.laz -olaz"<<"\n";
+        strOut<<"rmdir temp_tiles_ground /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles_ground"<<"\n";
+        strOut<<"lasground_new -v -i temp_tiles\\tile*.laz ^"<<"\n";
+        strOut<<"          -step %GROUND_STEP_SIZE% -coarse ^"<<"\n";
+        strOut<<"          -odir temp_tiles_ground -olaz ^"<<"\n";
+        strOut<<"          -cores %CORES%"<<"\n";
+        strOut<<"rmdir temp_tiles /s /q"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles_ground_thinned"<<"\n";
+        strOut<<"lasthin64 -v -i temp_tiles_ground\\tile*.laz ^"<<"\n";
+        strOut<<"          -ignore_class 1 -adaptive %LASTHIN_ADAPTATIVE_H% %LASTHIN_ADAPTATIVE_2D% ^"<<"\n";
+        strOut<<"          -odir temp_tiles_ground_thinned -olaz ^"<<"\n";
+        strOut<<"          -cores %CORES%"<<"\n";
+        strOut<<"rmdir temp_tiles_ground /s /q"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned_height /s /q"<<"\n";
+        strOut<<"mkdir temp_tiles_ground_thinned_height"<<"\n";
+        strOut<<"lasheight64 -v -i temp_tiles_ground_thinned\\tile*.laz ^"<<"\n";
+        strOut<<"          -ignore_class 2 -classify_below %VINE_TRUNK_BASE_MINIMUM_HEIGHT% 0 ^"<<"\n";
+        strOut<<"          -classify_between %VINE_TRUNK_BASE_MINIMUM_HEIGHT% %VINE_TRUNK_BASE_MAXIMUM_HEIGHT% 3 ^"<<"\n";
+        strOut<<"          -classify_between %VINE_TRUNK_HIGHER_MINIMUM_HEIGHT% %VINE_TRUNK_HIGHER_MAXIMUM_HEIGHT% 4 ^"<<"\n";
+        strOut<<"          -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^"<<"\n";
+        strOut<<"          -odir temp_tiles_ground_thinned_height -olaz ^"<<"\n";
+        strOut<<"          -cores %CORES%"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned /s /q"<<"\n";
+        strOut<<"lastile -i temp_tiles_ground_thinned_height\\tile*.laz ^"<<"\n";
+        strOut<<"        -reverse_tiling ^"<<"\n";
+        strOut<<"        -o \"%OUTPUT_POINT_CLOUD_CLIPPED_FILE%\" -odix _ground -olaz"<<"\n";
+        strOut<<"rmdir temp_tiles_ground_thinned_height /s /q"<<"\n";
+        strOut<<"lasgrid64 -v -i *_ground.laz ^"<<"\n";
+        strOut<<"          -keep_class 4 -step %VINE_FILTER_RASTER_STEP% -counter_16bit ^"<<"\n";
+        strOut<<"          -o %VINE_FILTER_RASTER_FILE_NAME%"<<"\n";
+        strOut<<"las2dem64 -v -i *_ground.laz ^"<<"\n";
+        strOut<<"          -step %DTM_STEP% -keep_class 2 ^"<<"\n";
+        strOut<<"          -o %OUTPUT_DTM_FILE%"<<"\n";
+        file.close();
+    }
+    QString processFileNameGdal_1=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_GDAL_1;
+    {
+        if(QFile::exists(processFileNameGdal_1))
+        {
+            if(!QFile::remove(processFileNameGdal_1))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(processFileNameGdal_1);
+                return(false);
+            }
+        }
+        QFile file(processFileNameGdal_1);
+        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError opening file:\n%1").arg(processFileNameGdal_1);
+            return(false);
+        }
+        QTextStream strOut(&file);
+        /*
+        echo off
+        set OSGEO4W_ROOT=C:/Program Files/QGIS 3.22.12
+        set PROCESS_PATH=D:/PAFyCToolsGui/230329_FuenteAlamo_Vid_A6000/20230529
+        set INPUT_RASTER_FILE=%PROCESS_PATH%\vines.tif
+        set OUTPUT_SHAPEFILE_PIXELS=%PROCESS_PATH%\vines_pixels.shp
+        set OUTPUT_SHAPEFILE_PIXELS_UNION=%PROCESS_PATH%\vines_pixels_union.shp
+        set DELETE_RASTER_FILE=%PROCESS_PATH%\vines.*
+        set DELETE_SHAPEFILE_PIXELS=%PROCESS_PATH%\vines_pixels.*
+        call "%OSGEO4W_ROOT%\\bin\o4w_env.bat"
+        python "%OSGEO4W_ROOT%\\apps\\Python39\\Scripts\\gdal_polygonize.py" "%INPUT_RASTER_FILE%" -b 1 -f "ESRI Shapefile" "%OUTPUT_SHAPEFILE_PIXELS%" OUTPUT DN
+        ogr2ogr -f "ESRI Shapefile" "%OUTPUT_SHAPEFILE_PIXELS_UNION%" "%OUTPUT_SHAPEFILE_PIXELS%" -dialect sqlite -sql "SELECT ST_Union(geometry) FROM vines_pixels" -explodecollections
+        del "%DELETE_RASTER_FILE%"
+        del "%DELETE_SHAPEFILE_PIXELS%"
+        */
+        strOut<<"echo off"<<"\n";
+        strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+        strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+        strOut<<"set INPUT_RASTER_FILE=%PROCESS_PATH%\\vines.tif"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_PIXELS=%PROCESS_PATH%\\vines_pixels.shp"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_PIXELS_UNION=%PROCESS_PATH%\\vines_pixels_union.shp"<<"\n";
+        strOut<<"set DELETE_RASTER_FILE=%PROCESS_PATH%\\vines.*"<<"\n";
+        strOut<<"set DELETE_SHAPEFILE_PIXELS=%PROCESS_PATH%\\vines_pixels.*"<<"\n";
+        strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+        strOut<<"python \"%OSGEO4W_ROOT%\\apps\\Python39\\Scripts\\gdal_polygonize.py\" \"%INPUT_RASTER_FILE%\" -b 1 -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE_PIXELS%\" OUTPUT DN"<<"\n";
+        strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE_PIXELS_UNION%\" \"%OUTPUT_SHAPEFILE_PIXELS%\" -dialect sqlite -sql \"SELECT ST_Union(geometry) FROM vines_pixels\" -explodecollections"<<"\n";
+        strOut<<"del \"%DELETE_RASTER_FILE%\""<<"\n";
+        strOut<<"del \"%DELETE_SHAPEFILE_PIXELS%\""<<"\n";
+        file.close();
+    }
 
-
-
-
-
+    QString processFileNameLastools_2=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_LASTOOLS_2;
+    {
+        if(QFile::exists(processFileNameLastools_2))
+        {
+            if(!QFile::remove(processFileNameLastools_2))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(processFileNameLastools_2);
+                return(false);
+            }
+        }
+        QFile file(processFileNameLastools_2);
+        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError opening file:\n%1").arg(processFileNameLastools_2);
+            return(false);
+        }
+        QTextStream strOut(&file);
+        /*
+        echo off
+        set PATH=%PATH%;"C:/LAStools/bin"
+        set PROCESS_PATH=D:/PAFyCToolsGui/230329_FuenteAlamo_Vid_A6000/20230529
+        set OUTPUT_SHAPEFILE_PIXELS_UNION=%PROCESS_PATH%\vines_pixels_union.shp
+        set OUTPUT_FILTER_LAZ=%PROCESS_PATH%\vine_trunk_filter.laz
+        set VINE_TRUNK_FILTER_RASTER_STEP=0.01
+        set VINE_RASTER_TRUNK_FILE_NAME=%PROCESS_PATH%\vines_trunk.tif
+        set DELETE_SHAPEFILE_UNION=%PROCESS_PATH%\vines_pixels_union.*
+        cd /d "%PROCESS_PATH%"
+        lasclip64 -i *_ground.laz -poly "%OUTPUT_SHAPEFILE_PIXELS_UNION%" -o "%OUTPUT_FILTER_LAZ%"
+        lasgrid64 -i "%OUTPUT_FILTER_LAZ%" -keep_class 3 -step %VINE_TRUNK_FILTER_RASTER_STEP% -counter_16bit -o "%VINE_RASTER_TRUNK_FILE_NAME%"
+        del "%DELETE_SHAPEFILE_UNION%"
+        del "%OUTPUT_FILTER_LAZ%"
+        */
+        strOut<<"echo off"<<"\n";
+        strOut<<"set PATH=%PATH%;\""<<lastoolsPath<<"\"\n";
+        strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_PIXELS_UNION=%PROCESS_PATH%\\vines_pixels_union.shp"<<"\n";
+        strOut<<"set OUTPUT_FILTER_LAZ=%PROCESS_PATH%\\vine_trunk_filter.laz"<<"\n";
+        strOut<<"set VINE_TRUNK_FILTER_RASTER_STEP="<<QString::number(trunkBaseRasterFilterGsd,'f',3)<<"\n";
+        strOut<<"set VINE_RASTER_TRUNK_FILE_NAME=%PROCESS_PATH%\\vines_trunk.tif"<<"\n";
+        strOut<<"set DELETE_SHAPEFILE_UNION=%PROCESS_PATH%\\vines_pixels_union.*"<<"\n";
+        strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+        strOut<<"lasclip64 -i *_ground.laz -poly \"%OUTPUT_SHAPEFILE_PIXELS_UNION%\" -o \"%OUTPUT_FILTER_LAZ%\""<<"\n";
+        strOut<<"lasgrid64 -i \"%OUTPUT_FILTER_LAZ%\" -keep_class 3 -step %VINE_TRUNK_FILTER_RASTER_STEP% -counter_16bit -o \"%VINE_RASTER_TRUNK_FILE_NAME%\""<<"\n";
+        strOut<<"del \"%DELETE_SHAPEFILE_UNION%\""<<"\n";
+        strOut<<"del \"%OUTPUT_FILTER_LAZ%\""<<"\n";
+        file.close();
+    }
+    QString processFileNameGdal_2=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_GDAL_2;
+    {
+        if(QFile::exists(processFileNameGdal_2))
+        {
+            if(!QFile::remove(processFileNameGdal_2))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(processFileNameGdal_2);
+                return(false);
+            }
+        }
+        QFile file(processFileNameGdal_2);
+        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError opening file:\n%1").arg(processFileNameGdal_1);
+            return(false);
+        }
+        QTextStream strOut(&file);
+        /*
+        echo off
+        set OSGEO4W_ROOT=C:/Program Files/QGIS 3.22.12
+        set PROCESS_PATH=D:/PAFyCToolsGui/230329_FuenteAlamo_Vid_A6000/20230529
+        set INPUT_RASTER_FILE=%PROCESS_PATH%\vines_trunk.tif
+        set OUTPUT_SHAPEFILE_AUX=%PROCESS_PATH%\vines_taux.shp
+        set OUTPUT_SHAPEFILE_POLYGON=%PROCESS_PATH%\vines_tpol.shp
+        set OUTPUT_SHAPEFILE=%PROCESS_PATH%\vines_trunk_contours.shp
+        set MINIMUM_AREA=0.0003
+        set DELETE_RASTER_TRUNK=%PROCESS_PATH%\vines_trunk.*
+        set DELETE_SHAPEFILE_AUX=%PROCESS_PATH%\vines_taux.*
+        set DELETE_SHAPEFILE_POLYGON=%PROCESS_PATH%\vines_tpol.*
+        call "%OSGEO4W_ROOT%\bin\o4w_env.bat"
+        python "%OSGEO4W_ROOT%\apps\Python39\Scripts\gdal_polygonize.py" "%INPUT_RASTER_FILE%" -b 1 -f "ESRI Shapefile" "%OUTPUT_SHAPEFILE_AUX%" OUTPUT DN
+        ogr2ogr -f "ESRI Shapefile" "%OUTPUT_SHAPEFILE_POLYGON%" "%OUTPUT_SHAPEFILE_AUX%" -explodecollections -dialect sqlite -sql "select ST_union(geometry) from vines_taux"
+        ogr2ogr -f "ESRI Shapefile" "%OUTPUT_SHAPEFILE%" "%OUTPUT_SHAPEFILE_POLYGON%" -dialect sqlite -sql "select * from vines_tpol where ST_area(geometry)>%MINIMUM_AREA%"
+        del "%DELETE_RASTER_TRUNK%"
+        del "%DELETE_SHAPEFILE_AUX%"
+        del "%DELETE_SHAPEFILE_POLYGON%"
+        */
+        strOut<<"echo off"<<"\n";
+        strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+        strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+        strOut<<"set INPUT_RASTER_FILE=%PROCESS_PATH%\\vines_trunk.tif"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_AUX=%PROCESS_PATH%\\vines_taux.shp"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_POLYGON=%PROCESS_PATH%\\vines_tpol.shp"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE=%PROCESS_PATH%\\vines_trunk_contours.shp"<<"\n";
+        strOut<<"set MINIMUM_AREA="<<QString::number(trunkBaseMinimumArea,'f',6)<<"\n";
+        strOut<<"set DELETE_RASTER_TRUNK=%PROCESS_PATH%\\vines_trunk.*"<<"\n";
+        strOut<<"set DELETE_SHAPEFILE_AUX=%PROCESS_PATH%\\vines_taux.*"<<"\n";
+        strOut<<"set DELETE_SHAPEFILE_POLYGON=%PROCESS_PATH%\\vines_tpol.*"<<"\n";
+        strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+        strOut<<"python \"%OSGEO4W_ROOT%\\apps\\Python39\\Scripts\\gdal_polygonize.py\" \"%INPUT_RASTER_FILE%\" -b 1 -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE_AUX%\" OUTPUT DN"<<"\n";
+        strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE_POLYGON%\" \"%OUTPUT_SHAPEFILE_AUX%\" -explodecollections -dialect sqlite -sql \"select ST_union(geometry) from vines_taux\""<<"\n";
+        strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE%\" \"%OUTPUT_SHAPEFILE_POLYGON%\" -dialect sqlite -sql \"select * from vines_tpol where ST_area(geometry)>%MINIMUM_AREA%\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_SHAPEFILE%\" -sql \"alter table vines_trunk_contours add column enabled integer\""<<"\n";
+        strOut<<"ogrinfo \"%OUTPUT_SHAPEFILE%\" -dialect SQLite -sql \"update vines_trunk_contours set enabled=1\""<<"\n";
+        strOut<<"del \"%DELETE_RASTER_TRUNK%\""<<"\n";
+        strOut<<"del \"%DELETE_SHAPEFILE_AUX%\""<<"\n";
+        strOut<<"del \"%DELETE_SHAPEFILE_POLYGON%\""<<"\n";
+        file.close();
+    }
     //groundClassicationStep,adaptativeThinning2d,adaptativeThinningH
     //trunkBaseMinimumHeight,trunkBaseMaximumHeight
     //trunkHigherMinimumHeight,trunkHigherMaximumHeight
     //trunkHigherRasterFilterGsd,trunkBaseRasterFilterGsd
-    //dtmGsd,trunkBaseMinimumArea
+    //dtmGsd,trunkBaseMinimumArea    
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE;
+    {
+        if(QFile::exists(processFileName))
+        {
+            if(!QFile::remove(processFileName))
+            {
+                strError=functionName;
+                strError+=QObject::tr("\nError removing file:\n%1").arg(processFileName);
+                return(false);
+            }
+        }
+        QFile file(processFileName);
+        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError opening file:\n%1").arg(processFileName);
+            return(false);
+        }
+        QTextStream strOut(&file);
+        strOut<<"echo off"<<"\n";
+        strOut<<"set OUTPUT_PATH="<<outputPath<<"\n";
+        strOut<<"call \"%OUTPUT_PATH%/"<<PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_LASTOOLS_1<<"\"\n";
+        strOut<<"call \"%OUTPUT_PATH%/"<<PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_GDAL_1<<"\"\n";
+        strOut<<"call \"%OUTPUT_PATH%/"<<PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_LASTOOLS_2<<"\"\n";
+        strOut<<"call \"%OUTPUT_PATH%/"<<PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_PROCESS_FILE_GDAL_2<<"\"\n";
+        file.close();
+    }
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+//    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
     return(true);
 }
 
@@ -2260,6 +2635,16 @@ void PAFyCToolsDialog::on_qgisPathPushButton_clicked()
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Not exists QGIS environment file:\n%1").arg(qgisSetEnvironmentBatFileName);
+            msg+=QObject::tr("\n\nAuthor emails:\n%1\n%2")
+                    .arg(PAFYCTOOLSGUI_AUTHOR_EMAIL).arg(PAFYCTOOLSGUI_AUTHOR_EMAIL2);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+        QString qgisPythonGdalPolygonizeFileName=strDir+PAFYCTOOLSGUI_QGIS_PYTHON_GDAL_POLYGONIZE;
+        if(!QFile::exists(qgisPythonGdalPolygonizeFileName))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Not exists QGIS python GDAL polygonize file:\n%1").arg(qgisPythonGdalPolygonizeFileName);
             msg+=QObject::tr("\n\nAuthor emails:\n%1\n%2")
                     .arg(PAFYCTOOLSGUI_AUTHOR_EMAIL).arg(PAFYCTOOLSGUI_AUTHOR_EMAIL2);
             QMessageBox::information(this,title,msg);
