@@ -159,7 +159,7 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL);
-    mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PP);
+//    mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PP);
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PL);
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC].push_back(PAFYCTOOLSGUI_COMMAND_PLPPC_PF);
     QVector<QString> aux2;
@@ -1715,15 +1715,22 @@ bool PAFyCToolsDialog::process_plppc_pp_pwol(QString &qgisPath,
         set INPUT_RASTER_FILE=%PROCESS_PATH%\vines_trunk.tif
         set OUTPUT_SHAPEFILE_AUX=%PROCESS_PATH%\vines_taux.shp
         set OUTPUT_SHAPEFILE_POLYGON=%PROCESS_PATH%\vines_tpol.shp
+        set OUTPUT_SHAPEFILE_FID=%PROCESS_PATH%\vines_trunk_ctrsfid.shp
         set OUTPUT_SHAPEFILE=%PROCESS_PATH%\vines_trunk_contours.shp
         set MINIMUM_AREA=0.0003
         set DELETE_RASTER_TRUNK=%PROCESS_PATH%\vines_trunk.*
         set DELETE_SHAPEFILE_AUX=%PROCESS_PATH%\vines_taux.*
         set DELETE_SHAPEFILE_POLYGON=%PROCESS_PATH%\vines_tpol.*
+        set DELETE_SHAPEFILE_FID=%PROCESS_PATH%\vines_trunk_ctrsfid.*
+        set FIELD_ID_INITIAL=FID
+        set FIELD_ID_FINAL=id
         call "%OSGEO4W_ROOT%\bin\o4w_env.bat"
         python "%OSGEO4W_ROOT%\apps\Python39\Scripts\gdal_polygonize.py" "%INPUT_RASTER_FILE%" -b 1 -f "ESRI Shapefile" "%OUTPUT_SHAPEFILE_AUX%" OUTPUT DN
         ogr2ogr -f "ESRI Shapefile" "%OUTPUT_SHAPEFILE_POLYGON%" "%OUTPUT_SHAPEFILE_AUX%" -explodecollections -dialect sqlite -sql "select ST_union(geometry) from vines_taux"
         ogr2ogr -f "ESRI Shapefile" "%OUTPUT_SHAPEFILE%" "%OUTPUT_SHAPEFILE_POLYGON%" -dialect sqlite -sql "select * from vines_tpol where ST_area(geometry)>%MINIMUM_AREA%"
+        ogr2ogr "%OUTPUT_SHAPEFILE%" "%OUTPUT_SHAPEFILE_FID%" -sql "SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_trunk_ctrsfid"
+        ogrinfo "%OUTPUT_SHAPEFILE%" -sql "alter table vines_trunk_contours add column enabled integer"
+        ogrinfo "%OUTPUT_SHAPEFILE%" -dialect SQLite -sql "update vines_trunk_contours set enabled=1"
         del "%DELETE_RASTER_TRUNK%"
         del "%DELETE_SHAPEFILE_AUX%"
         del "%DELETE_SHAPEFILE_POLYGON%"
@@ -1734,20 +1741,26 @@ bool PAFyCToolsDialog::process_plppc_pp_pwol(QString &qgisPath,
         strOut<<"set INPUT_RASTER_FILE=%PROCESS_PATH%\\vines_trunk.tif"<<"\n";
         strOut<<"set OUTPUT_SHAPEFILE_AUX=%PROCESS_PATH%\\vines_taux.shp"<<"\n";
         strOut<<"set OUTPUT_SHAPEFILE_POLYGON=%PROCESS_PATH%\\vines_tpol.shp"<<"\n";
+        strOut<<"set OUTPUT_SHAPEFILE_FID=%PROCESS_PATH%\\vines_trunk_ctrsfid.shp"<<"\n";
         strOut<<"set OUTPUT_SHAPEFILE=%PROCESS_PATH%\\vines_trunk_contours.shp"<<"\n";
         strOut<<"set MINIMUM_AREA="<<QString::number(trunkBaseMinimumArea,'f',6)<<"\n";
         strOut<<"set DELETE_RASTER_TRUNK=%PROCESS_PATH%\\vines_trunk.*"<<"\n";
         strOut<<"set DELETE_SHAPEFILE_AUX=%PROCESS_PATH%\\vines_taux.*"<<"\n";
         strOut<<"set DELETE_SHAPEFILE_POLYGON=%PROCESS_PATH%\\vines_tpol.*"<<"\n";
+        strOut<<"set DELETE_SHAPEFILE_FID=%PROCESS_PATH%\\vines_trunk_ctrsfid.*"<<"\n";
+        strOut<<"set FIELD_ID_INITIAL=FID"<<"\n";
+        strOut<<"set FIELD_ID_FINAL=id"<<"\n";
         strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
         strOut<<"python \"%OSGEO4W_ROOT%\\apps\\Python39\\Scripts\\gdal_polygonize.py\" \"%INPUT_RASTER_FILE%\" -b 1 -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE_AUX%\" OUTPUT DN"<<"\n";
         strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE_POLYGON%\" \"%OUTPUT_SHAPEFILE_AUX%\" -explodecollections -dialect sqlite -sql \"select ST_union(geometry) from vines_taux\""<<"\n";
-        strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE%\" \"%OUTPUT_SHAPEFILE_POLYGON%\" -dialect sqlite -sql \"select * from vines_tpol where ST_area(geometry)>%MINIMUM_AREA%\""<<"\n";
+        strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"%OUTPUT_SHAPEFILE_FID%\" \"%OUTPUT_SHAPEFILE_POLYGON%\" -dialect sqlite -sql \"select * from vines_tpol where ST_area(geometry)>%MINIMUM_AREA%\""<<"\n";
+        strOut<<"ogr2ogr \"%OUTPUT_SHAPEFILE%\" \"%OUTPUT_SHAPEFILE_FID%\" -sql \"SELECT %FIELD_ID_INITIAL% AS %FIELD_ID_FINAL% from vines_trunk_ctrsfid\""<<"\n";
         strOut<<"ogrinfo \"%OUTPUT_SHAPEFILE%\" -sql \"alter table vines_trunk_contours add column enabled integer\""<<"\n";
         strOut<<"ogrinfo \"%OUTPUT_SHAPEFILE%\" -dialect SQLite -sql \"update vines_trunk_contours set enabled=1\""<<"\n";
         strOut<<"del \"%DELETE_RASTER_TRUNK%\""<<"\n";
         strOut<<"del \"%DELETE_SHAPEFILE_AUX%\""<<"\n";
         strOut<<"del \"%DELETE_SHAPEFILE_POLYGON%\""<<"\n";
+        strOut<<"del \"%DELETE_SHAPEFILE_FID%\""<<"\n";
         file.close();
     }
     //groundClassicationStep,adaptativeThinning2d,adaptativeThinningH
