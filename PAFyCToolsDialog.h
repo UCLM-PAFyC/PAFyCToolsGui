@@ -39,6 +39,8 @@ private slots:
     void on_processPushButton_clicked();
 
 private:
+    void copyShapefile(QString &fileName,
+                       QString& newFileName);
     bool initialize(QString& strError);
     bool process_ccfpgp(QString& qgisPath,
                           QString& outputPath,

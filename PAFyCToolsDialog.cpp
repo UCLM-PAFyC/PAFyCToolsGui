@@ -280,6 +280,17 @@ bool PAFyCToolsDialog::process_ccfpgp(QString &qgisPath,
     else
     {
         outputShapefile="none";
+//        QString strDateTime=QDateTime::toString("yyyyddMM_hhmmss");
+//        QFileInfo fileInfo(framesShapefile);
+//        QString auxPath=fileInfo.absolutePath();
+//        QString auxCompleteBaseName=fileInfo.completeBaseName();
+//        QString auxSuffix=fileInfo.completeSuffix();
+//        QString newShapefile=auxPath+"/"+auxCompleteBaseName;
+//        newShapefile+="_";
+//        newShapefile+=strDateTime;
+//        newShapefile+=".";
+//        newShapefile+=auxSuffix;
+//        copyShapefile(framesShapefile,newShapefile);
     }
 
     parameterCode=PAFYCTOOLSGUI_COMMAND_CCFPGP_TAG_CROP_MINIMUM_HEIGHT;
@@ -2282,7 +2293,7 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"        return str_error"<<"\n";
     strOut<<"    dtm_geotransform = dtm_ds.GetGeoTransform()"<<"\n";
     strOut<<"    for i in range(len(dsm_geotransform)):"<<"\n";
-    strOut<<"        if abs(dsm_geotransform[i]-dtm_geotransform[i]) > 0.0000001:"<<"\n";
+    strOut<<"        if abs(dsm_geotransform[i]-dtm_geotransform[i]) > 1.0:"<<"\n";
     strOut<<"            str_error = \"Function process\""<<"\n";
     strOut<<"            str_error += \"\\nDifferent georreferencing in DTM and DSM\""<<"\n";
     strOut<<"            return str_error"<<"\n";
@@ -3088,5 +3099,71 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
             return;
         }
     }
+}
+
+void PAFyCToolsDialog::copyShapefile(QString &fileName,
+                                     QString &newFileName)
+{
+    if(!QFile::exists(fileName))
+    {
+        QString title=PAFYCTOOLSGUI_TITLE;
+        QString msg=QObject::tr("\nNot exists shapefile:\n%1").arg(fileName);
+        QMessageBox::information(this,title,msg);
+        return;
+    }
+    QFileInfo fileInfo(fileName);
+    QString suffix=fileInfo.suffix();
+    if(suffix.compare("shp",Qt::CaseInsensitive)!=0)
+    {
+        QString title=PAFYCTOOLSGUI_TITLE;
+        QString msg=QObject::tr("\nFile witout shp extension: %1").arg(fileName);
+        QMessageBox::information(this,title,msg);
+        return;
+    }
+    QString baseNameWithOutExtension=fileInfo.completeBaseName();
+    QString path=fileInfo.absolutePath();
+    QDir auxDir(QDir::currentPath());
+    if(!auxDir.exists(path))
+    {
+        QString title=PAFYCTOOLSGUI_TITLE;
+        QString msg=QObject::tr("\nNot exists path:\n%1").arg(path);
+        QMessageBox::information(this,title,msg);
+        return;
+    }
+    QFileInfo newFileInfo(newFileName);
+    QString newCompleteBaseName=newFileInfo.completeBaseName();
+    QString newPath=newFileInfo.absolutePath();
+    QStringList fileExtensions;
+    fileExtensions<<"shp";
+    fileExtensions<<"cpg";
+    fileExtensions<<"mshp";
+    fileExtensions<<"shx";
+    fileExtensions<<"dbf";
+    fileExtensions<<"sbn";
+    fileExtensions<<"sbx";
+    fileExtensions<<"fbn";
+    fileExtensions<<"fbx";
+    fileExtensions<<"ain";
+    fileExtensions<<"aih";
+    fileExtensions<<"prj";
+    fileExtensions<<"shp.xml";
+    fileExtensions<<"html";
+    fileExtensions<<"lbl";
+    fileExtensions<<"qpj";
+    for(int i=0;i<fileExtensions.size();i++)
+    {
+        QString suffix=fileExtensions.at(i);
+        QString fileNameToCopy=path+"/"+baseNameWithOutExtension+"."+suffix;
+        QString newFileName=newPath+"/"+newCompleteBaseName+"."+suffix;
+        if(!QFile::copy(fileNameToCopy,newFileName))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("\nError copying file: %1\nto file:\n%2")
+                    .arg(fileNameToCopy).arg(newFileName);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    return;
 }
 
