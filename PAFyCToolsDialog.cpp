@@ -500,7 +500,7 @@ bool PAFyCToolsDialog::process_ccfpgp(QString &qgisPath,
     else strOut<<"0"<<" ";
     strOut<<"--dem_files_string_separator=\""<<dateFromDemsFileStringSeparator<<"\" ";
     strOut<<"--dem_files_date_string_position="<<QString::number(dateTagPositionInDemFiles)<<" ";
-    dateFormat=dateFormat.replace("%","%%");
+//    dateFormat=dateFormat.replace("%","%%");
     strOut<<"--date_format=\""<<dateFormat<<"\" ";
     if(str_date.compare("none",Qt::CaseInsensitive)==0)
     {
@@ -2537,7 +2537,7 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"    parser.add_option(\"--dem_files_date_string_position\", dest=\"dem_files_date_string_position\", action=\"store\", type=\"int\","<<"\n";
     strOut<<"                      help=\"DEM files date string position\", default=None)"<<"\n";
     strOut<<"    parser.add_option(\"--date_format\", dest=\"date_format\", action=\"store\", type=\"string\","<<"\n";
-    strOut<<"                      help=\"Date format (%Y%m%d, ...)\", default=None)"<<"\n";
+    strOut<<"                      help=\"Date format (%%Y%%m%%d, ...)\", default=None)"<<"\n";
     strOut<<"    parser.add_option(\"--date\", dest=\"date\", action=\"store\", type=\"string\","<<"\n";
     strOut<<"                      help=\"Date value no from DEM files\", default=None)"<<"\n";
     strOut<<"    (options, args) = parser.parse_args()"<<"\n";
@@ -2634,14 +2634,14 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"    else:"<<"\n";
     strOut<<"        dem_files_string_separator = options.dem_files_string_separator"<<"\n";
     strOut<<"        dem_files_date_string_position = options.dem_files_date_string_position"<<"\n";
-    strOut<<"        dsm_file_name_without_path = os.path.basename(input_dsm)"<<"\n";
+    strOut<<"        dsm_file_name_without_path = os.path.splitext(os.path.basename(input_dsm))[0]"<<"\n";
     strOut<<"        dsm_file_name_values = dsm_file_name_without_path.split(dem_files_string_separator)"<<"\n";
     strOut<<"        if dem_files_date_string_position < 0 or dem_files_date_string_position > len(dsm_file_name_values):"<<"\n";
     strOut<<"            print(\"Error:\\nInvalid value for dsm files date string position: {}\"."<<"\n";
     strOut<<"                  format(str(dem_files_date_string_position)))"<<"\n";
     strOut<<"        str_date = dsm_file_name_values[dem_files_date_string_position-1]"<<"\n";
     strOut<<"        date_dsm = datetime.datetime.strptime(str_date, date_format)"<<"\n";
-    strOut<<"        dtm_file_name_without_path = os.path.basename(input_dtm)"<<"\n";
+    strOut<<"        dtm_file_name_without_path = os.path.splitext(os.path.basename(input_dtm))[0]"<<"\n";
     strOut<<"        dtm_file_name_values = dtm_file_name_without_path.split(dem_files_string_separator)"<<"\n";
     strOut<<"        if dem_files_date_string_position < 0 or dem_files_date_string_position > len(dtm_file_name_values):"<<"\n";
     strOut<<"            print(\"Error:\\nInvalid value for dtm files date string position: {}\"."<<"\n";
