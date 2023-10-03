@@ -23,6 +23,22 @@
 
 #define PAFYCTOOLSGUI_NO_COMBO_SELECT " ... "
 
+#define PAFYCTOOLSGUI_COMMAND_BCVRM "Build raster model of crop parameter (ordinary Kriging)"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_INPUT_SHAPEFILE "BCVRM_InputShapeFile"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_VARIABLE "BCVRM_Variable"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_ERROR_MEASURE "BCVRM_ErrorMeasure"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_GSD "BCVRM_GSD"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_CROSS_VALIDATION "BCVRM_CrossValidation"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_CROSS_VALIDATION_SUBSAMPLES "BCVRM_CrossValidationSubSamples"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_OUTPUT_GEOTIFF "BCVRM_OutputGeoTIFF"
+//#define PAFYCTOOLSGUI_COMMAND_BCVRM_ ""
+//#define PAFYCTOOLSGUI_COMMAND_BCVRM_ ""
+//#define PAFYCTOOLSGUI_COMMAND_BCVRM_ ""
+//#define PAFYCTOOLSGUI_COMMAND_BCVRM_ ""
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_TEMPORAL_PATH "tmp"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_PROCESS_FILE "bcvrm.bat"
+#define PAFYCTOOLSGUI_COMMAND_BCVRM_QGIS_PROGRAM "/bin/qgis_process-qgis-ltr.bat"
+
 #define PAFYCTOOLSGUI_COMMAND_PLPPC "Plants location from photogrammetric point cloud"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL "Plants location from photogrammetric point cloud: 1. Preprocessing plants without leaves"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_HELP_PDF_FILE "PlantsLocationFromPhotogrammetricPointCloud_1_PreprocessingPlantsWithoutLeaves.pdf"

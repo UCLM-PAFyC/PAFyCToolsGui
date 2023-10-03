@@ -57,6 +57,9 @@ private:
     bool process_plppc_pf(QString& qgisPath,
                           QString& outputPath,
                           QString& strError);
+    bool process_bcvrm(QString& qgisPath,
+                       QString& outputPath,
+                       QString& strError);
     bool removeDir(QString dirName,
                    bool onlyContent=false);
 
@@ -80,6 +83,8 @@ private:
     QVector<QString> mResultFiles;
     QMap<QString,QVector<QString> > mModelManagementCommandsByCommand;
     QVector<QString> mPythonFiles;
+    QVector<QString> mFilesToRemove;
+    QVector<QString> mFoldersToRemove;
 };
 
 #endif // PAFYCTOOLSDIALOG_H

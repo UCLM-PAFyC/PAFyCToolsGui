@@ -155,6 +155,7 @@ bool PAFyCToolsDialog::initialize(QString &strError)
 
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_PLPPC);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CCFPGP);
+    mCommands.push_back(PAFYCTOOLSGUI_COMMAND_BCVRM);
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
@@ -185,6 +186,7 @@ bool PAFyCToolsDialog::process_ccfpgp(QString &qgisPath,
                                       QString &outputPath,
                                       QString &strError)
 {
+    mFilesToRemove.clear();
     QString command=PAFYCTOOLSGUI_COMMAND_CCFPGP;
     QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
     QString strValue,framesShapefile,dsmFile,dtmFile,outputShapefile,parameterCode,str_date;
@@ -511,6 +513,8 @@ bool PAFyCToolsDialog::process_ccfpgp(QString &qgisPath,
         strOut<<"--date=\""<<str_date<<"\"\n";
     }
     file.close();
+
+//    mFilesToRemove.push_back(processFileName);
 
     QStringList parameters;
     mStrExecution=processFileName;
@@ -2113,6 +2117,273 @@ bool PAFyCToolsDialog::process_plppc_pf(QString &qgisPath,
     return(true);
 }
 
+bool PAFyCToolsDialog::process_bcvrm(QString &qgisPath,
+                                     QString &outputPath,
+                                     QString &strError)
+{
+    mFilesToRemove.clear();
+    mFoldersToRemove.clear();
+    mPythonFiles.clear();
+
+    QString command=PAFYCTOOLSGUI_COMMAND_BCVRM;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,parameterCode;
+    int intValue;
+    double dblValue;
+    bool okToNumber;
+    Parameter* ptrParameter=NULL;
+
+    QString qgisProgramProcess=qgisPath+PAFYCTOOLSGUI_COMMAND_BCVRM_QGIS_PROGRAM;
+    if(!QFile::exists(qgisProgramProcess))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists QGIS processing program:\n%1")
+                .arg(qgisProgramProcess);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_INPUT_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1 not exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    QString inputShapefileName=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_VARIABLE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    QString fieldName=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_ERROR_MEASURE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    QString errorMeasure=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_GSD;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    bool okToDbl=false;
+    dblValue=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1 value is not a double: %2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    double gsd=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_CROSS_VALIDATION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    QStringList strValues=strValue.split(":");
+    QString strCrossValidation=strValues.at(0);
+    int crossValidation=strCrossValidation.toInt();
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_CROSS_VALIDATION_SUBSAMPLES;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    bool okToInt=false;
+    intValue=strValue.toInt(&okToInt);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1 value is not an integer: %2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    int crossValidationSubsamples=intValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_BCVRM_TAG_OUTPUT_GEOTIFF;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    QString outputGeoTIFF=strValue;
+    if(outputGeoTIFF.isEmpty())
+    {
+        outputGeoTIFF=outputPath+"/";
+        outputGeoTIFF+=QFileInfo(inputShapefileName).completeBaseName();
+        outputGeoTIFF+="_";
+        QString auxFieldName=fieldName.replace(" ","_");
+        outputGeoTIFF+=auxFieldName;
+        outputGeoTIFF+=".tif";
+    }
+    if(QFile::exists(outputGeoTIFF))
+    {
+        if(!QFile::remove(outputGeoTIFF))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing existing output GeoTiff:\n%1")
+                    .arg(outputGeoTIFF);
+            return(false);
+        }
+    }
+
+    QString temporalPath=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_BCVRM_TEMPORAL_PATH;
+    QDir currentDir=QDir::current();
+    if(currentDir.exists(temporalPath))
+    {
+        if(!removeDir(temporalPath))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing existing temporal path:\n%1")
+                    .arg(outputGeoTIFF);
+            return(false);
+        }
+    }
+    if(!currentDir.mkpath(temporalPath))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError creating temporal path:\n%1")
+                .arg(outputGeoTIFF);
+        return(false);
+    }
+    mFoldersToRemove.push_back(temporalPath);
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_BCVRM_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing file:\n%1").arg(processFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError opening file:\n%1").arg(processFileName);
+        return(false);
+    }
+    QString centroidsShapefileName=temporalPath+"/centroids.shp";
+    QString regionShapefileName=temporalPath+"/region.shp";
+    QString predictionFileName=temporalPath+"/prediction.sdat";
+    QString varianceFileName=temporalPath+"/variance.sdat";
+    QString cvsFileName=temporalPath+"/cvs.shp";
+    QString cvrFileName=temporalPath+"/cvr.shp";
+    QTextStream strOut(&file);
+    strOut<<"echo off"<<"\n";
+    strOut<<"set OUTPUT_PATH="<<outputPath<<"\n";
+    strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+    strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+    strOut<<"cd /d \""<<outputPath<<"\"\n";
+    strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"";
+    strOut<<centroidsShapefileName<<"\" \"";
+    strOut<<inputShapefileName<<"\"  -dialect sqlite -sql \"SELECT ST_Centroid(geometry), * FROM ";
+    strOut<<QFileInfo(inputShapefileName).completeBaseName()<<"\"\n";
+    strOut<<"ogr2ogr -f \"ESRI Shapefile\" \"";
+    strOut<<regionShapefileName<<"\" \"";
+    strOut<<inputShapefileName<<"\"  -dialect sqlite -sql \"SELECT ST_ConvexHULL(ST_Union(geometry)), * FROM ";
+    strOut<<QFileInfo(inputShapefileName).completeBaseName()<<"\"\n";
+    strOut<<"call \""<<qgisProgramProcess<<"\" run saga:ordinarykriging";
+    strOut<<" --TARGET_DEFINITION=0";
+    strOut<<" --POINTS=\""<<centroidsShapefileName<<"\"";
+    strOut<<" --FIELD=\""<<fieldName<<"\"";
+    strOut<<" --TARGET_USER_SIZE="<<QString::number(gsd,'f',2);
+    strOut<<" --TQUALITY=0";
+    strOut<<" --VAR_MAXDIST=0.0";
+    strOut<<" --VAR_NCLASSES=100";
+    strOut<<" --VAR_NSKIP=1";
+    strOut<<" --VAR_MODEL=\"a + b * x\"";
+    strOut<<" --LOG=false";
+    strOut<<" --BLOCK=false";
+    strOut<<" --DBLOCK=100.0";
+    strOut<<" --CV_METHOD="<<QString::number(crossValidation);
+    strOut<<" --CV_SAMPLES="<<QString::number(crossValidationSubsamples);
+    strOut<<" --SEARCH_RANGE=1";
+    strOut<<" --SEARCH_RADIUS=1000.0";
+    strOut<<" --SEARCH_POINTS_ALL=1";
+    strOut<<" --SEARCH_POINTS_MIN=16";
+    strOut<<" --SEARCH_POINTS_MAX=20";
+    strOut<<" --PREDICTION=\""<<predictionFileName<<"\"";
+    strOut<<" --VARIANCE=\""<<varianceFileName<<"\"";
+    strOut<<" --CV_SUMMARY=\""<<cvsFileName<<"\"";
+    strOut<<" --CV_RESIDUALS=\""<<cvrFileName<<"\"";
+    strOut<<"\n";
+    strOut<<"gdalwarp -cutline \""<<regionShapefileName<<"\" \""<<predictionFileName<<"\" ";
+    strOut<<"\""<<outputGeoTIFF<<"\""<<"\n";
+    file.close();
+
+    mFilesToRemove.push_back(processFileName);
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+
+    return(true);
+}
+
 bool PAFyCToolsDialog::removeDir(QString dirName, bool onlyContent)
 {
     bool result = true;
@@ -2856,6 +3127,17 @@ void PAFyCToolsDialog::on_ProgressExternalProcessDialog_closed()
         QFile::remove(mPythonFiles[npf]);
     }
     mPythonFiles.clear();
+    for(int npf=0;npf<mFilesToRemove.size();npf++)
+    {
+        QFile::remove(mFilesToRemove[npf]);
+    }
+    mFilesToRemove.clear();
+    for(int npf=0;npf<mFoldersToRemove.size();npf++)
+    {
+        QString folderToRemove=mFoldersToRemove[npf];
+        removeDir(folderToRemove);
+    }
+    mFoldersToRemove.clear();
     if(mPtrProgressExternalProcessDialog->getState()==PROCESSDIALOG_STATE_ERROR)
     {
         QString title=mProgressExternalProcessTitle;
@@ -3127,6 +3409,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_CCFPGP,Qt::CaseInsensitive)==0)
     {
         if(!process_ccfpgp(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_BCVRM,Qt::CaseInsensitive)==0)
+    {
+        if(!process_bcvrm(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
