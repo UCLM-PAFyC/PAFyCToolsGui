@@ -477,6 +477,12 @@ bool PAFyCToolsDialog::process_ccfpgp(QString &qgisPath,
  --input_dtm "D:\PAFyCToolsGui\20220603_Tarazona_RGB_Vid\input\DEM-103-RGB_Tarazona_Vid_20220603_25830_2cm.tif"
  --crop_minimum_height 0.05 --output_shp none --compute_GCC=1 --compute_volume=1 --date_from_dem_files=1
  --dem_files_string_separator="_" --dem_files_date_string_position=4 --date_format="%Y%m%d" --date=none
+
+ --input_crops_frames_shp "D:/PAFyCToolsGui/20231019_mamh/Datos/Marcos_export.shp"
+--input_dsm "D:/PAFyCToolsGui/20231019_mamh/Datos/DSM_20220615.tif"
+--input_dtm "D:/PAFyCToolsGui/20231019_mamh/Datos/DEM_20220615.tif"
+--crop_minimum_height 0.05 --output_shp "D:/PAFyCToolsGui/20231019_mamh/output_dhl/marcos_export.shp" --compute_GCC 1 --compute_volume 1
+--date_from_dem_files 1 --dem_files_string_separator="_" --dem_files_date_string_position=2 --date_format=%Y%m%d --date=none
     */
 
     strOut<<"echo off"<<"\n";
@@ -503,7 +509,8 @@ bool PAFyCToolsDialog::process_ccfpgp(QString &qgisPath,
     strOut<<"--dem_files_string_separator=\""<<dateFromDemsFileStringSeparator<<"\" ";
     strOut<<"--dem_files_date_string_position="<<QString::number(dateTagPositionInDemFiles)<<" ";
 //    dateFormat=dateFormat.replace("%","%%");
-    strOut<<"--date_format=\""<<dateFormat<<"\" ";
+//    strOut<<"--date_format=\""<<dateFormat<<"\" ";
+    strOut<<"--date_format="<<dateFormat<<" ";
     if(str_date.compare("none",Qt::CaseInsensitive)==0)
     {
         strOut<<"--date="<<str_date<<"\n";
@@ -2438,7 +2445,6 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"# authors:"<<"\n";
     strOut<<"# David Hernandez Lopez, david.hernandez@uclm.es"<<"\n";
     strOut<<"# Miguel Angel Moreno Hidalgo, miguelangel.moreno@uclm.es"<<"\n";
-    strOut<<"# Diego Guerrero Sevilla, diego.guerrero@uclm.es"<<"\n";
     strOut<<""<<"\n";
     strOut<<"import optparse"<<"\n";
     strOut<<"import numpy"<<"\n";
@@ -2454,6 +2460,27 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"import csv"<<"\n";
     strOut<<"import re"<<"\n";
     strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def copy_shapefile(input_shp, output_shp):"<<"\n";
+    strOut<<"    str_error = ''"<<"\n";
+    strOut<<"    input_base_name = os.path.splitext(os.path.basename(input_shp))[0]"<<"\n";
+    strOut<<"    input_base_path = os.path.dirname(input_shp)"<<"\n";
+    strOut<<"    output_base_path = os.path.dirname(output_shp)"<<"\n";
+    strOut<<"    output_base_name = os.path.splitext(os.path.basename(output_shp))[0]"<<"\n";
+    strOut<<"    for file in os.listdir(input_base_path):"<<"\n";
+    strOut<<"        file_base_name = os.path.splitext(os.path.basename(file))[0]"<<"\n";
+    strOut<<"        if file_base_name == input_base_name:"<<"\n";
+    strOut<<"            file_extension = os.path.splitext(os.path.basename(file))[1]"<<"\n";
+    strOut<<"            output_file = output_base_path + \"/\" + output_base_name  + file_extension"<<"\n";
+    strOut<<"            output_file = os.path.normcase(output_file)"<<"\n";
+    strOut<<"            input_file = input_base_path + \"/\" + file"<<"\n";
+    strOut<<"            input_file = os.path.normcase(input_file)"<<"\n";
+    strOut<<"            try:"<<"\n";
+    strOut<<"                shutil.copyfile(input_file, output_file)"<<"\n";
+    strOut<<"            except EnvironmentError as e:"<<"\n";
+    strOut<<"                str_error = \"Unable to copy file. %s\" % e"<<"\n";
+    strOut<<"                return str_error"<<"\n";
+    strOut<<"    return str_error"<<"\n";
     strOut<<""<<"\n";
     strOut<<"class OptionParser(optparse.OptionParser):"<<"\n";
     strOut<<"    def check_required(self, opt):"<<"\n";
@@ -2514,8 +2541,6 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"def process(input_shp,"<<"\n";
     strOut<<"            input_dsm,"<<"\n";
     strOut<<"            input_dtm,"<<"\n";
-    strOut<<"            use_input_shp,"<<"\n";
-    strOut<<"            output_shp,"<<"\n";
     strOut<<"            crop_minimum_height,"<<"\n";
     strOut<<"            compute_GCC,"<<"\n";
     strOut<<"            compute_volume,"<<"\n";
@@ -2564,7 +2589,7 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"        return str_error"<<"\n";
     strOut<<"    dtm_geotransform = dtm_ds.GetGeoTransform()"<<"\n";
     strOut<<"    for i in range(len(dsm_geotransform)):"<<"\n";
-    strOut<<"        if abs(dsm_geotransform[i]-dtm_geotransform[i]) > 1.0:"<<"\n";
+    strOut<<"        if abs(dsm_geotransform[i]-dtm_geotransform[i]) > 0.0000001:"<<"\n";
     strOut<<"            str_error = \"Function process\""<<"\n";
     strOut<<"            str_error += \"\\nDifferent georreferencing in DTM and DSM\""<<"\n";
     strOut<<"            return str_error"<<"\n";
@@ -2599,10 +2624,7 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"    driver = ogr.GetDriverByName('ESRI Shapefile')"<<"\n";
     strOut<<"    in_vec_ds = None"<<"\n";
     strOut<<"    try:"<<"\n";
-    strOut<<"        if not use_input_shp:"<<"\n";
-    strOut<<"            in_vec_ds = driver.Open(input_shp, 0)  # 0 means read-only. 1 means writeable."<<"\n";
-    strOut<<"        else:"<<"\n";
-    strOut<<"            in_vec_ds = driver.Open(input_shp, 1)  # 0 means read-only. 1 means writeable."<<"\n";
+    strOut<<"        in_vec_ds = driver.Open(input_shp, 1)  # 0 means read-only. 1 means writeable."<<"\n";
     strOut<<"    except ValueError:"<<"\n";
     strOut<<"        str_error = \"Function process\""<<"\n";
     strOut<<"        str_error += \"\\nError opening dataset file:\\n{}\".format(input_shp)"<<"\n";
@@ -2617,30 +2639,18 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"        str_error = \"Function process\""<<"\n";
     strOut<<"        str_error += \"\\nNot Polygon geometry type in file:\\n{}\".format(input_shp)"<<"\n";
     strOut<<"        return str_error"<<"\n";
-    strOut<<"    out_vec_ds = None"<<"\n";
-    strOut<<"    out_layer = None"<<"\n";
     strOut<<"    field_name_gcc = str_date + \"_gcc\""<<"\n";
     strOut<<"    field_name_vol = str_date + \"_vol\""<<"\n";
     strOut<<"    in_layer_definition = in_layer.GetLayerDefn()"<<"\n";
-    strOut<<"    if use_input_shp:"<<"\n";
-    strOut<<"        if compute_GCC:"<<"\n";
-    strOut<<"            field_id_index = in_layer_definition.GetFieldIndex(field_name_gcc)"<<"\n";
-    strOut<<"            if field_id_index == -1:"<<"\n";
-    strOut<<"                in_layer.CreateField(ogr.FieldDefn(field_name_gcc, ogr.OFTReal))"<<"\n";
-    strOut<<"        if compute_volume:"<<"\n";
-    strOut<<"            field_id_index = in_layer_definition.GetFieldIndex(field_name_vol)"<<"\n";
-    strOut<<"            if field_id_index == -1:"<<"\n";
-    strOut<<"                in_layer.CreateField(ogr.FieldDefn(field_name_vol, ogr.OFTReal))"<<"\n";
-    strOut<<"    else:"<<"\n";
-    strOut<<"        out_ds = driver.CreateDataSource(output_shp)"<<"\n";
-    strOut<<"        out_layer = out_ds.CreateLayer(output_shp.split(\".\")[0], in_crs, in_geometry_type)"<<"\n";
-    strOut<<"        for i in range(0, in_layer_definition.GetFieldCount()):"<<"\n";
-    strOut<<"            fieldDefn = in_layer_definition.GetFieldDefn(i)"<<"\n";
-    strOut<<"            out_layer.CreateField(fieldDefn)"<<"\n";
-    strOut<<"        if compute_GCC:"<<"\n";
-    strOut<<"            out_layer.CreateField(ogr.FieldDefn(field_name_gcc, ogr.OFTReal))"<<"\n";
-    strOut<<"        if compute_volume:"<<"\n";
-    strOut<<"            out_layer.CreateField(ogr.FieldDefn(field_name_vol, ogr.OFTReal))"<<"\n";
+    strOut<<"    if compute_GCC:"<<"\n";
+    strOut<<"        field_id_index = in_layer_definition.GetFieldIndex(field_name_gcc)"<<"\n";
+    strOut<<"        if field_id_index == -1:"<<"\n";
+    strOut<<"            in_layer.CreateField(ogr.FieldDefn(field_name_gcc, ogr.OFTReal))"<<"\n";
+    strOut<<"    if compute_volume:"<<"\n";
+    strOut<<"        field_id_index = in_layer_definition.GetFieldIndex(field_name_vol)"<<"\n";
+    strOut<<"        if field_id_index == -1:"<<"\n";
+    strOut<<"            in_layer.CreateField(ogr.FieldDefn(field_name_vol, ogr.OFTReal))"<<"\n";
+    strOut<<"    in_layer_definition = in_layer.GetLayerDefn()"<<"\n";
     strOut<<"    number_of_features = in_layer.GetFeatureCount()"<<"\n";
     strOut<<"    cont_feature = 0"<<"\n";
     strOut<<"    for feature in in_layer:"<<"\n";
@@ -2772,12 +2782,8 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"            feature.SetField(field_name_gcc, gcc)"<<"\n";
     strOut<<"        if compute_volume:"<<"\n";
     strOut<<"            feature.SetField(field_name_vol, volume * 1000.0)"<<"\n";
-    strOut<<"        if not use_input_shp:"<<"\n";
-    strOut<<"            out_layer.CreateFeature(feature)"<<"\n";
-    strOut<<"        else:"<<"\n";
-    strOut<<"            in_layer.SetFeature(feature)"<<"\n";
+    strOut<<"        in_layer.SetFeature(feature)"<<"\n";
     strOut<<"    in_vec_ds = None"<<"\n";
-    strOut<<"    out_vec_ds = None"<<"\n";
     strOut<<"    return str_error"<<"\n";
     strOut<<""<<"\n";
     strOut<<""<<"\n";
@@ -2808,7 +2814,7 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"    parser.add_option(\"--dem_files_date_string_position\", dest=\"dem_files_date_string_position\", action=\"store\", type=\"int\","<<"\n";
     strOut<<"                      help=\"DEM files date string position\", default=None)"<<"\n";
     strOut<<"    parser.add_option(\"--date_format\", dest=\"date_format\", action=\"store\", type=\"string\","<<"\n";
-    strOut<<"                      help=\"Date format (%%Y%%m%%d, ...)\", default=None)"<<"\n";
+    strOut<<"                      help=\"Date format (%Y%m%d, ...)\", default=None)"<<"\n";
     strOut<<"    parser.add_option(\"--date\", dest=\"date\", action=\"store\", type=\"string\","<<"\n";
     strOut<<"                      help=\"Date value no from DEM files\", default=None)"<<"\n";
     strOut<<"    (options, args) = parser.parse_args()"<<"\n";
@@ -2848,20 +2854,6 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"    if not options.date:"<<"\n";
     strOut<<"        parser.print_help()"<<"\n";
     strOut<<"        return"<<"\n";
-//    strOut<<"    if not options.input_crops_frames_shp \\"<<"\n";
-//    strOut<<"        or not options.input_dsm \\"<<"\n";
-//    strOut<<"        or not options.input_dtm \\"<<"\n";
-//    strOut<<"        or not options.crop_minimum_height \\"<<"\n";
-//    strOut<<"        or not options.output_shp \\"<<"\n";
-//    strOut<<"        or not options.compute_GCC \\"<<"\n";
-//    strOut<<"        or not options.compute_volume \\"<<"\n";
-//    strOut<<"        or not options.date_from_dem_files \\"<<"\n";
-//    strOut<<"        or not options.dem_files_string_separator \\"<<"\n";
-//    strOut<<"        or not options.dem_files_date_string_position \\"<<"\n";
-//    strOut<<"        or not options.date_format \\"<<"\n";
-//    strOut<<"        or not options.date :"<<"\n";
-//    strOut<<"        parser.print_help()"<<"\n";
-//    strOut<<"        return"<<"\n";
     strOut<<"    input_crops_shapefile = options.input_crops_frames_shp"<<"\n";
     strOut<<"    if not exists(input_crops_shapefile):"<<"\n";
     strOut<<"        print(\"Error:\\nInput crops shapefile does not exists:\\n{}\".format(input_crops_shapefile))"<<"\n";
@@ -2924,11 +2916,16 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"            return"<<"\n";
     strOut<<"        date = date_dsm"<<"\n";
     strOut<<"    str_date = str(date.strftime('%Y')[2:4]) + str(date.strftime('%m')) + str(date.strftime('%d'))"<<"\n";
-    strOut<<"    str_error = process(input_crops_shapefile,"<<"\n";
+    strOut<<"    input_shp = input_crops_shapefile"<<"\n";
+    strOut<<"    if not use_input_shp:"<<"\n";
+    strOut<<"        str_error = copy_shapefile(input_crops_shapefile, output_shp)"<<"\n";
+    strOut<<"        if str_error:"<<"\n";
+    strOut<<"            print(\"Error:\\n{}\".format(str_error))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        input_shp = output_shp"<<"\n";
+    strOut<<"    str_error = process(input_shp,"<<"\n";
     strOut<<"                        input_dsm,"<<"\n";
     strOut<<"                        input_dtm,"<<"\n";
-    strOut<<"                        use_input_shp,"<<"\n";
-    strOut<<"                        output_shp,"<<"\n";
     strOut<<"                        crop_minimum_height,"<<"\n";
     strOut<<"                        compute_GCC,"<<"\n";
     strOut<<"                        compute_volume,"<<"\n";
@@ -3313,7 +3310,7 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
         QString title=PAFYCTOOLSGUI_TITLE;
         QMessageBox msgBox(this);
         msgBox.setText(title);
-        msgBox.setInformativeText("Exists files in output path.\nDo you want replace it?");
+        msgBox.setInformativeText("Exists files in output path.\nDo you want to change the output path?");
         msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Discard | QMessageBox::Cancel);
         msgBox.setDefaultButton(QMessageBox::Ok);
         int ret = msgBox.exec();
