@@ -60,12 +60,17 @@ private:
     bool process_bcvrm(QString& qgisPath,
                        QString& outputPath,
                        QString& strError);
+    bool process_cmndvi(QString& qgisPath,
+                        QString& outputPath,
+                        QString& strError);
     bool removeDir(QString dirName,
                    bool onlyContent=false);
 
 private:
     bool writePythonProgramCropsCharacterizationFromPhotogrammetricGeomaticProducts(QString pythonFileName,
                                                                                     QString &strError);
+    bool writePythonProgramCropMonitoringFromPhotogrammetricGeomaticProducts(QString pythonFileName,
+                                                                             QString& strError);
     Ui::PAFyCToolsDialog *ui;
     QSettings *mPtrSettings;
     QString mBasePath;

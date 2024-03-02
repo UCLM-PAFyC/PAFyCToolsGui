@@ -156,6 +156,7 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_PLPPC);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CCFPGP);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_BCVRM);
+    mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CMNDVI);
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
@@ -2391,6 +2392,511 @@ bool PAFyCToolsDialog::process_bcvrm(QString &qgisPath,
     return(true);
 }
 
+bool PAFyCToolsDialog::process_cmndvi(QString &qgisPath,
+                                      QString &outputPath,
+                                      QString &strError)
+{
+    mFilesToRemove.clear();
+    QString command=PAFYCTOOLSGUI_COMMAND_CMNDVI;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,framesShapefile,orthomosaicFile,outputShapefile,parameterCode,str_date;
+    QString strAuxError,dateFormat,dateFromOrthomosaicFileStringSeparator,segmentationMethod;
+    int intValue,dateTagPositionInOrthomosaicFile,blueBandPosition,greenBandPosition;
+    int redBandPosition,nirBandPosition,numberOfClustersForKmeans;
+    double dblValue,cropsMininumNDVI,soilRGBMaximumReflectance,factorToReflectance,minimumValueForPercentile;
+    bool okToNumber,computeGCC,computeVolume,dateFromOrthomosaciFile;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_FRAMES_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    framesShapefile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_MULTISPECTRAL_ORTHOMOSAIC_FILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    orthomosaicFile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_OUTPUT_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!strValue.isEmpty())
+    {
+//        if(QFile::exists(strValue))
+//        {
+//            strError=functionName;
+//            strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+//                    .arg(parameterCode).arg(strValue);
+//            return(false);
+//        }
+        outputShapefile=strValue;
+    }
+    else
+    {
+        outputShapefile="none";
+//        QString strDateTime=QDateTime::toString("yyyyddMM_hhmmss");
+//        QFileInfo fileInfo(framesShapefile);
+//        QString auxPath=fileInfo.absolutePath();
+//        QString auxCompleteBaseName=fileInfo.completeBaseName();
+//        QString auxSuffix=fileInfo.completeSuffix();
+//        QString newShapefile=auxPath+"/"+auxCompleteBaseName;
+//        newShapefile+="_";
+//        newShapefile+=strDateTime;
+//        newShapefile+=".";
+//        newShapefile+=auxSuffix;
+//        copyShapefile(framesShapefile,newShapefile);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_CROPS_MINIMUM_NDVI;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    cropsMininumNDVI=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_FACTOR_TO_REFLECTANCE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    factorToReflectance=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_SOIL_RGB_MAXIMUM_REFLECTANCE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    soilRGBMaximumReflectance=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_BLUE_BAND_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    intValue=strValue.toInt(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    blueBandPosition=intValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_GREEN_BAND_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    intValue=strValue.toInt(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    greenBandPosition=intValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_RED_BAND_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    intValue=strValue.toInt(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    redBandPosition=intValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_NIR_BAND_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    intValue=strValue.toInt(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    nirBandPosition=intValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_SEGMENTATION_METHOD;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    segmentationMethod=strValue;
+    if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_SEGMENTATION_METHOD_KMEANS,Qt::CaseInsensitive)==0)
+    {
+        parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_NUMBER_OF_CLUSTERS_FOR_KMEANS;
+        ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+        if(ptrParameter==NULL)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                    .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+            return(false);
+        }
+        ptrParameter->getValue(strValue);
+        strValue=strValue.trimmed();
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        numberOfClustersForKmeans=intValue;
+    }
+    else if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_SEGMENTATION_METHOD_PERCENTILE,Qt::CaseInsensitive)==0)
+    {
+        parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_MINIMUM_VALUE_FOR_PERCENTILE;
+        ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+        if(ptrParameter==NULL)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                    .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+            return(false);
+        }
+        ptrParameter->getValue(strValue);
+        strValue=strValue.trimmed();
+        okToNumber=false;
+        dblValue=strValue.toDouble(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        minimumValueForPercentile=dblValue;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_DATE_FROM_MULTISPECTRAL_ORTHOMOSAIC_FILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFromOrthomosaciFile=false;
+    if(strValue.compare("true",Qt::CaseInsensitive)==0)
+    {
+        dateFromOrthomosaciFile=true;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_MULTISPECTRAL_ORTHOMOSAIC_FILE_TAGS_STRING_SEPARATOR;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFromOrthomosaicFileStringSeparator=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_MULTISPECTRAL_ORTHOMOSAIC_FILE_TAG_DATE_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dateTagPositionInOrthomosaicFile=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_DATE_FORMAT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFormat=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_DATE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    str_date=strValue;
+    if(dateFromOrthomosaciFile)
+    {
+        str_date="none";
+    }
+
+    mPythonFiles.clear();
+    QString pythonFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_CMNDVI_PYTHON_FILE;
+    if(!writePythonProgramCropMonitoringFromPhotogrammetricGeomaticProducts(pythonFileName,
+                                                                            strAuxError))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError writting python file:\n%1").arg(strAuxError);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    mPythonFiles.append(pythonFileName);
+
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_CMNDVI_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nHa fallado la eliminación del fichero:\n%1").arg(processFileName);
+            QFile::remove(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nHa fallado la apertura del fichero:\n%1").arg(processFileName);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+
+    /*
+--input_crops_frames_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_initial.shp"
+--method_data ndvi --method_segmentation  kmeans --kmeans_clusters 6
+--input_orthomosaic "D:\PAFyCToolsGui\20230630_Tarazona_MULTI_Vid\ORT-303-RFL-Tarazona_Vid_20230630_25830_4cm.tif"
+--blue_band_position 1 --green_band_position 2 --red_band_position 3 --nir_band_position 5
+--soil_maximum_rgb_reflectance 0.08  --crop_minimum_value 0.5 --factor_to_reflectance 1.0
+--output_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_initial_ndvi_kmeans.shp"
+--date_from_orthomosaic_file=1 --orthomosaic_file_string_separator="_"
+--orthomosaic_file_date_string_position=3 --date_format="%Y%m%d" --date=none
+
+--input_crops_frames_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_initial.shp"
+--method_data ndvi --method_segmentation  percentile --percentile_minimum_threshold 0.05
+--input_orthomosaic "D:\PAFyCToolsGui\20230630_Tarazona_MULTI_Vid\ORT-303-RFL-Tarazona_Vid_20230630_25830_4cm.tif"
+--blue_band_position 1 --green_band_position 2 --red_band_position 3 --nir_band_position 5 --soil_maximum_rgb_reflectance 0.08
+--crop_minimum_value 0.5 --factor_to_reflectance 1.0
+--output_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_initial_ndvi_percentile.shp"
+ --date_from_orthomosaic_file=1 --orthomosaic_file_string_separator="_" --orthomosaic_file_date_string_position=3
+--date_format="%Y%m%d" --date=none
+    */
+
+    strOut<<"echo off"<<"\n";
+    strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+    strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+    strOut<<"set TOOL="<<pythonFileName<<"\n";
+    strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+    strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+    strOut<<"python %TOOL% ";
+    strOut<<"--input_crops_frames_shp \""<<framesShapefile <<"\" ";
+    strOut<<"--input_orthomosaic \""<<orthomosaicFile <<"\" ";
+    strOut<<"--output_shp \""<<outputShapefile<<"\" ";
+    strOut<<"--date_from_orthomosaic_file ";
+    if(dateFromOrthomosaciFile) strOut<<"1"<<" ";
+    else strOut<<"0"<<" ";
+    strOut<<"--orthomosaic_file_string_separator=\""<<dateFromOrthomosaicFileStringSeparator<<"\" ";
+    strOut<<"--orthomosaic_file_date_string_position="<<QString::number(dateTagPositionInOrthomosaicFile)<<" ";
+    //    dateFormat=dateFormat.replace("%","%%");
+    //    strOut<<"--date_format=\""<<dateFormat<<"\" ";
+    strOut<<"--date_format="<<dateFormat<<" ";
+    if(str_date.compare("none",Qt::CaseInsensitive)==0)
+    {
+        strOut<<"--date="<<str_date<<"\n";
+    }
+    else
+    {
+        strOut<<"--date=\""<<str_date<<"\"\n";
+    }
+    strOut<<"--factor_to_reflectance "<<QString::number(factorToReflectance,'f',6)<<" ";
+    strOut<<"--crop_minimum_value "<<QString::number(cropsMininumNDVI,'f',2)<<" ";
+    strOut<<"--soil_maximum_rgb_reflectance "<<QString::number(soilRGBMaximumReflectance,'f',2)<<" ";
+    strOut<<"--blue_band_position "<<QString::number(blueBandPosition)<<" ";
+    strOut<<"--green_band_position "<<QString::number(greenBandPosition)<<" ";
+    strOut<<"--red_band_position "<<QString::number(redBandPosition)<<" ";
+    strOut<<"--nir_band_position "<<QString::number(nirBandPosition)<<" ";
+    strOut<<"--method_data ndvi --method_data "<<segmentationMethod<<" ";
+    if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_SEGMENTATION_METHOD_KMEANS,Qt::CaseInsensitive)==0)
+    {
+        strOut<<"--kmeans_clusters "<<QString::number(numberOfClustersForKmeans)<<" ";
+    }
+    else if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_SEGMENTATION_METHOD_PERCENTILE,Qt::CaseInsensitive)==0)
+    {
+        strOut<<"--percentile_minimum_threshold "<<QString::number(minimumValueForPercentile,'f',2)<<" ";
+    }
+    file.close();
+
+//    mFilesToRemove.push_back(processFileName);
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+    return(true);
+}
+
 bool PAFyCToolsDialog::removeDir(QString dirName, bool onlyContent)
 {
     bool result = true;
@@ -2943,6 +3449,930 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     return(true);
 }
 
+bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomaticProducts(QString pythonFileName,
+                                                                                           QString &strError)
+{
+    QString command=PAFYCTOOLSGUI_COMMAND_CCFPGP;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    functionName+=QObject::tr("Writing python file");
+    if(QFile::exists(pythonFileName))
+    {
+        if(!QFile::remove(pythonFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing file:\n%1").arg(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(pythonFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError opening file:\n%1").arg(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+    strOut<<"# authors:"<<"\n";
+    strOut<<"# David Hernandez Lopez, david.hernandez@uclm.es"<<"\n";
+    strOut<<"# Miguel Angel Moreno Hidalgo, miguelangel.moreno@uclm.es"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"import optparse"<<"\n";
+    strOut<<"import numpy"<<"\n";
+    strOut<<"from osgeo import gdal, osr, ogr"<<"\n";
+    strOut<<"import os"<<"\n";
+    strOut<<"import json"<<"\n";
+    strOut<<"from urllib.parse import unquote"<<"\n";
+    strOut<<"import shutil"<<"\n";
+    strOut<<"from os.path import exists"<<"\n";
+    strOut<<"import datetime"<<"\n";
+    strOut<<"import glob"<<"\n";
+    strOut<<"from math import floor, ceil, sqrt, isnan, modf, trunc"<<"\n";
+    strOut<<"import csv"<<"\n";
+    strOut<<"import re"<<"\n";
+    strOut<<"import cv2 as cv"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def copy_shapefile(input_shp, output_shp):"<<"\n";
+    strOut<<"    str_error = ''"<<"\n";
+    strOut<<"    input_base_name = os.path.splitext(os.path.basename(input_shp))[0]"<<"\n";
+    strOut<<"    input_base_path = os.path.dirname(input_shp)"<<"\n";
+    strOut<<"    output_base_path = os.path.dirname(output_shp)"<<"\n";
+    strOut<<"    output_base_name = os.path.splitext(os.path.basename(output_shp))[0]"<<"\n";
+    strOut<<"    for file in os.listdir(input_base_path):"<<"\n";
+    strOut<<"        file_base_name = os.path.splitext(os.path.basename(file))[0]"<<"\n";
+    strOut<<"        if file_base_name == input_base_name:"<<"\n";
+    strOut<<"            file_extension = os.path.splitext(os.path.basename(file))[1]"<<"\n";
+    strOut<<"            output_file = output_base_path + \"/\" + output_base_name  + file_extension"<<"\n";
+    strOut<<"            output_file = os.path.normcase(output_file)"<<"\n";
+    strOut<<"            input_file = input_base_path + \"/\" + file"<<"\n";
+    strOut<<"            input_file = os.path.normcase(input_file)"<<"\n";
+    strOut<<"            try:"<<"\n";
+    strOut<<"                shutil.copyfile(input_file, output_file)"<<"\n";
+    strOut<<"            except EnvironmentError as e:"<<"\n";
+    strOut<<"                str_error = \"Unable to copy file. %s\" % e"<<"\n";
+    strOut<<"                return str_error"<<"\n";
+    strOut<<"    return str_error"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"class OptionParser(optparse.OptionParser):"<<"\n";
+    strOut<<"    def check_required(self, opt):"<<"\n";
+    strOut<<"        option = self.get_option(opt)"<<"\n";
+    strOut<<"        # Assumes the option's 'default' is set to None!"<<"\n";
+    strOut<<"        if getattr(self.values, option.dest) is None:"<<"\n";
+    strOut<<"            self.error(\"%s option not supplied\" % option)"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def julian_date(day, month, year):"<<"\n";
+    strOut<<"    if month <= 2:  # january & february"<<"\n";
+    strOut<<"        year = year - 1.0"<<"\n";
+    strOut<<"        month = month + 12.0"<<"\n";
+    strOut<<"    jd = floor(365.25 * (year + 4716.0)) + floor(30.6001 * (month + 1.0)) + 2.0"<<"\n";
+    strOut<<"    jd = jd - floor(year / 100.0) + floor(floor(year / 100.0) / 4.0)"<<"\n";
+    strOut<<"    jd = jd + day - 1524.5"<<"\n";
+    strOut<<"    # jd = jd + day - 1524.5 + (utc_time)/24."<<"\n";
+    strOut<<"    mjd = jd - 2400000.5"<<"\n";
+    strOut<<"    return jd, mjd"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def julian_date_to_date(jd):"<<"\n";
+    strOut<<"    jd = jd + 0.5"<<"\n";
+    strOut<<"    F, I = modf(jd)"<<"\n";
+    strOut<<"    I = int(I)"<<"\n";
+    strOut<<"    A = trunc((I - 1867216.25)/36524.25)"<<"\n";
+    strOut<<"    if I > 2299160:"<<"\n";
+    strOut<<"        B = I + 1 + A - trunc(A / 4.)"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        B = I"<<"\n";
+    strOut<<"    C = B + 1524"<<"\n";
+    strOut<<"    D = trunc((C - 122.1) / 365.25)"<<"\n";
+    strOut<<"    E = trunc(365.25 * D)"<<"\n";
+    strOut<<"    G = trunc((C - E) / 30.6001)"<<"\n";
+    strOut<<"    day = C - E + F - trunc(30.6001 * G)"<<"\n";
+    strOut<<"    if G < 13.5:"<<"\n";
+    strOut<<"        month = G - 1"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        month = G - 13"<<"\n";
+    strOut<<"    if month > 2.5:"<<"\n";
+    strOut<<"        year = D - 4716"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        year = D - 4715"<<"\n";
+    strOut<<"    return year, month, day"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def is_number(n):"<<"\n";
+    strOut<<"    is_number = True"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        num = float(n)"<<"\n";
+    strOut<<"        # check for \"nan\" floats"<<"\n";
+    strOut<<"        is_number = num == num  # or use `math.isnan(num)`"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        is_number = False"<<"\n";
+    strOut<<"    return is_number"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def sortFunction(e):"<<"\n";
+    strOut<<"    return e['value']"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def process_gcc_or_vol(input_shp,"<<"\n";
+    strOut<<"                       crop_minimum_value,"<<"\n";
+    strOut<<"                       kmeans_clusters,"<<"\n";
+    strOut<<"                       percentile_minimum_threshold,"<<"\n";
+    strOut<<"                       gcc,"<<"\n";
+    strOut<<"                       vol,"<<"\n";
+    strOut<<"                       input_field_name,"<<"\n";
+    strOut<<"                       date_format):"<<"\n";
+    strOut<<"    str_error = None"<<"\n";
+    strOut<<"    if kmeans_clusters < 0 and percentile_minimum_threshold < 0:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nkmeans_clusters or percentile_minimum_threshold must be greather than 0\""<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    elif kmeans_clusters > 0 and percentile_minimum_threshold > 0:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nkmeans_clusters or percentile_minimum_threshold must be greather than 0\""<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    if not exists(input_shp):"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    driver = ogr.GetDriverByName('ESRI Shapefile')"<<"\n";
+    strOut<<"    in_vec_ds = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        in_vec_ds = driver.Open(input_shp, 1)  # 0 means read-only. 1 means writeable."<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError opening dataset file:\\n{}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    in_layer = in_vec_ds.GetLayer()"<<"\n";
+    strOut<<"    in_crs = in_layer.GetSpatialRef()"<<"\n";
+    strOut<<"    in_crs_wkt = in_crs.ExportToWkt()"<<"\n";
+    strOut<<"    in_geometry_type = in_layer.GetGeomType()"<<"\n";
+    strOut<<"    if in_geometry_type != ogr.wkbPolygon \\"<<"\n";
+    strOut<<"            and in_geometry_type != ogr.wkbMultiPolygon \\"<<"\n";
+    strOut<<"            and in_geometry_type != ogr.wkbPolygonM and in_geometry_type != ogr.wkbPolygonZM:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot Polygon geometry type in file:\\n{}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    in_layer_definition = in_layer.GetLayerDefn()"<<"\n";
+    strOut<<"    input_field_id_index = in_layer_definition.GetFieldIndex(input_field_name)"<<"\n";
+    strOut<<"    if input_field_id_index == -1:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists field: {} in file:\\n{}\".format(input_field_name, input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    output_field_name = None"<<"\n";
+    strOut<<"    if gcc:"<<"\n";
+    strOut<<"        output_field_name = '_dg'"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        output_field_name = '_dv'"<<"\n";
+    strOut<<"    if kmeans_clusters > -1:"<<"\n";
+    strOut<<"        output_field_name = output_field_name + 'k'"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        output_field_name = output_field_name + 'p'"<<"\n";
+    strOut<<"    str_date = None"<<"\n";
+    strOut<<"    if '_' in input_field_name:"<<"\n";
+    strOut<<"        str_values = input_field_name.split('_')"<<"\n";
+    strOut<<"        for i in range(len(str_values)):"<<"\n";
+    strOut<<"            str_value = str_values[i]"<<"\n";
+    strOut<<"            is_date = True"<<"\n";
+    strOut<<"            if len(str_value) == 6:"<<"\n";
+    strOut<<"                str_value = '20' + str_value"<<"\n";
+    strOut<<"            try:"<<"\n";
+    strOut<<"                date = datetime.datetime.strptime(str_value, date_format)"<<"\n";
+    strOut<<"            except ValueError as error:"<<"\n";
+    strOut<<"                is_date = False"<<"\n";
+    strOut<<"            if is_date:"<<"\n";
+    strOut<<"                str_date = str(date.strftime('%Y')[2:4]) + str(date.strftime('%m')) + str(date.strftime('%d'))"<<"\n";
+    strOut<<"                break"<<"\n";
+    strOut<<"    if str_date:"<<"\n";
+    strOut<<"        output_field_name = str_date + output_field_name"<<"\n";
+    strOut<<"    output_field_id_index = in_layer_definition.GetFieldIndex(output_field_name)"<<"\n";
+    strOut<<"    if output_field_id_index == -1:"<<"\n";
+    strOut<<"        in_layer.CreateField(ogr.FieldDefn(output_field_name, ogr.OFTInteger))#ogr.OFTReal))"<<"\n";
+    strOut<<"    cont_feature = 0"<<"\n";
+    strOut<<"    input_values = []"<<"\n";
+    strOut<<"    position_in_input_values_by_feature_position = {}"<<"\n";
+    strOut<<"    for feature in in_layer:"<<"\n";
+    strOut<<"        value = feature.GetFieldAsDouble(input_field_id_index)"<<"\n";
+    strOut<<"        if value >= crop_minimum_value:"<<"\n";
+    strOut<<"            input_value = {}"<<"\n";
+    strOut<<"            input_value['position'] = cont_feature"<<"\n";
+    strOut<<"            input_value['value'] = value"<<"\n";
+    strOut<<"            input_values.append(input_value)"<<"\n";
+    strOut<<"            position_in_input_values_by_feature_position[cont_feature] = len(input_values) - 1"<<"\n";
+    strOut<<"        cont_feature = cont_feature + 1"<<"\n";
+    strOut<<"    number_of_features = in_layer.GetFeatureCount()"<<"\n";
+    strOut<<"    if kmeans_clusters > -1:"<<"\n";
+    strOut<<"        input_values_cv = numpy.zeros([len(input_values), 1], dtype=numpy.float32)"<<"\n";
+    strOut<<"        cont_feature_crop = 0"<<"\n";
+    strOut<<"        for input_value in input_values:"<<"\n";
+    strOut<<"            input_values_cv[cont_feature_crop][0] = input_value['value']"<<"\n";
+    strOut<<"            cont_feature_crop = cont_feature_crop + 1"<<"\n";
+    strOut<<"        # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )"<<"\n";
+    strOut<<"        # criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0)"<<"\n";
+    strOut<<"        criteria = (cv.TERM_CRITERIA_MAX_ITER, 100, 1.0)"<<"\n";
+    strOut<<"        flags = cv.KMEANS_RANDOM_CENTERS"<<"\n";
+    strOut<<"        compactness, labels, centers = cv.kmeans(input_values_cv, kmeans_clusters,"<<"\n";
+    strOut<<"                                                 None, criteria, 10, flags)"<<"\n";
+    strOut<<"        pos_center_min_value = -1"<<"\n";
+    strOut<<"        center_min_value = 100000000."<<"\n";
+    strOut<<"        for i in range(6):"<<"\n";
+    strOut<<"            if centers[i] < center_min_value:"<<"\n";
+    strOut<<"                center_min_value = centers[i]"<<"\n";
+    strOut<<"                pos_center_min_value = i"<<"\n";
+    strOut<<"        cont_feature = 0"<<"\n";
+    strOut<<"        for feature in in_layer:"<<"\n";
+    strOut<<"            damaged = 0"<<"\n";
+    strOut<<"            if not cont_feature in position_in_input_values_by_feature_position:"<<"\n";
+    strOut<<"                damaged = -1"<<"\n";
+    strOut<<"            else:"<<"\n";
+    strOut<<"                pos_in_input_values = position_in_input_values_by_feature_position[cont_feature]"<<"\n";
+    strOut<<"                pos_center = labels[position_in_input_values_by_feature_position[cont_feature]][0]"<<"\n";
+    strOut<<"                if pos_center == pos_center_min_value:"<<"\n";
+    strOut<<"                    damaged = 1"<<"\n";
+    strOut<<"            cont_feature = cont_feature + 1"<<"\n";
+    strOut<<"            feature.SetField(output_field_name, damaged)"<<"\n";
+    strOut<<"            in_layer.SetFeature(feature)"<<"\n";
+    strOut<<"    elif percentile_minimum_threshold > 0.:"<<"\n";
+    strOut<<"        input_values.sort(key=sortFunction)"<<"\n";
+    strOut<<"        damage_positions = []"<<"\n";
+    strOut<<"        number_of_damages = 0"<<"\n";
+    strOut<<"        threshold_value = -1"<<"\n";
+    strOut<<"        for i in range(0, len(input_values)):"<<"\n";
+    strOut<<"            damage_positions.append(input_values[i]['position'])"<<"\n";
+    strOut<<"            if number_of_damages / number_of_features > percentile_minimum_threshold:"<<"\n";
+    strOut<<"                threshold_value = input_values[i]['value']"<<"\n";
+    strOut<<"                break"<<"\n";
+    strOut<<"            number_of_damages = number_of_damages + 1"<<"\n";
+    strOut<<"        cont_feature = 0"<<"\n";
+    strOut<<"        for feature in in_layer:"<<"\n";
+    strOut<<"            damaged = 0"<<"\n";
+    strOut<<"            if not cont_feature in position_in_input_values_by_feature_position:"<<"\n";
+    strOut<<"                damaged = -1"<<"\n";
+    strOut<<"            else:"<<"\n";
+    strOut<<"                if cont_feature in damage_positions:"<<"\n";
+    strOut<<"                    damaged = 1"<<"\n";
+    strOut<<"            cont_feature = cont_feature + 1"<<"\n";
+    strOut<<"            feature.SetField(output_field_name, damaged)"<<"\n";
+    strOut<<"            in_layer.SetFeature(feature)"<<"\n";
+    strOut<<"    in_vec_ds = None"<<"\n";
+    strOut<<"    return str_error"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def process_ndvi(input_shp,"<<"\n";
+    strOut<<"                 kmeans_clusters,"<<"\n";
+    strOut<<"                 percentile_minimum_threshold,"<<"\n";
+    strOut<<"                 input_orthomosaic,"<<"\n";
+    strOut<<"                 blue_band_position,"<<"\n";
+    strOut<<"                 green_band_position,"<<"\n";
+    strOut<<"                 red_band_position,"<<"\n";
+    strOut<<"                 nir_band_position,"<<"\n";
+    strOut<<"                 factor_to_reflectance,"<<"\n";
+    strOut<<"                 soil_maximum_rgb_reflectance,"<<"\n";
+    strOut<<"                 crop_minimum_value,"<<"\n";
+    strOut<<"                 str_date):"<<"\n";
+    strOut<<"    str_error = None"<<"\n";
+    strOut<<"    if kmeans_clusters < 0 and percentile_minimum_threshold < 0:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nkmeans_clusters or percentile_minimum_threshold must be greather than 0\""<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    elif kmeans_clusters > 0 and percentile_minimum_threshold > 0:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nkmeans_clusters or percentile_minimum_threshold must be greather than 0\""<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    if not exists(input_shp):"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    if not exists(input_orthomosaic):"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_orthomosaic)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    orthomosaic_ds = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        orthomosaic_ds = gdal.Open(input_orthomosaic)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError opening dataset file:\\n{}\".format(input_orthomosaic)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    # orthomosaic_number_of_bands = orthomosaic_ds.GetRasterCount()"<<"\n";
+    strOut<<"    # if blue_band_position > orthomosaic_number_of_bands:"<<"\n";
+    strOut<<"    #     str_error = \"Function process\""<<"\n";
+    strOut<<"    #     str_error += \"\\nBlue band position is greather than orthomosaic number of bands\""<<"\n";
+    strOut<<"    #     return str_error"<<"\n";
+    strOut<<"    orthomosaic_ds_rb_blue = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        orthomosaic_ds_rb_blue = orthomosaic_ds.GetRasterBand(blue_band_position)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError getting BLUE raster band from file:\\n{}\".format(input_orthomosaic)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    orthomosaic_ds_rb_green = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        orthomosaic_ds_rb_green = orthomosaic_ds.GetRasterBand(green_band_position)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError getting GREEN raster band from file:\\n{}\".format(input_orthomosaic)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    orthomosaic_ds_rb_red = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        orthomosaic_ds_rb_red = orthomosaic_ds.GetRasterBand(red_band_position)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError getting RED raster band from file:\\n{}\".format(input_orthomosaic)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    orthomosaic_ds_rb_nir = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        orthomosaic_ds_rb_nir = orthomosaic_ds.GetRasterBand(nir_band_position)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError getting NIR raster band from file:\\n{}\".format(input_orthomosaic)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    orthomosaic_geotransform = orthomosaic_ds.GetGeoTransform()"<<"\n";
+    strOut<<"    orthomosaic_crs = osr.SpatialReference()"<<"\n";
+    strOut<<"    orthomosaic_crs.ImportFromWkt(orthomosaic_ds.GetProjectionRef())"<<"\n";
+    strOut<<"    orthomosaic_crs_wkt = orthomosaic_crs.ExportToWkt()"<<"\n";
+    strOut<<"    ulx, xres, xskew, uly, yskew, yres = orthomosaic_ds.GetGeoTransform()"<<"\n";
+    strOut<<"    lrx = ulx + (orthomosaic_ds.RasterXSize * xres)"<<"\n";
+    strOut<<"    lry = uly + (orthomosaic_ds.RasterYSize * yres)"<<"\n";
+    strOut<<"    out_ring = ogr.Geometry(ogr.wkbLinearRing)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, uly)"<<"\n";
+    strOut<<"    out_ring.AddPoint(lrx, uly)"<<"\n";
+    strOut<<"    out_ring.AddPoint(lrx, lry)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, lry)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, uly)"<<"\n";
+    strOut<<"    orthomosaic_poly = ogr.Geometry(ogr.wkbPolygon)"<<"\n";
+    strOut<<"    orthomosaic_poly.AddGeometry(out_ring)"<<"\n";
+    strOut<<"    rs_pixel_width = orthomosaic_geotransform[1]"<<"\n";
+    strOut<<"    rs_pixel_height = orthomosaic_geotransform[5]"<<"\n";
+    strOut<<"    orthomosaic_pixel_area = abs(rs_pixel_width) * abs(rs_pixel_height)"<<"\n";
+    strOut<<"    orthomosaic_x_origin = orthomosaic_geotransform[0]"<<"\n";
+    strOut<<"    orthomosaic_y_origin = orthomosaic_geotransform[3]"<<"\n";
+    strOut<<"    orthomosaic_pixel_width = orthomosaic_geotransform[1]"<<"\n";
+    strOut<<"    orthomosaic_pixel_height = orthomosaic_geotransform[5]"<<"\n";
+    strOut<<"    driver = ogr.GetDriverByName('ESRI Shapefile')"<<"\n";
+    strOut<<"    in_vec_ds = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        in_vec_ds = driver.Open(input_shp, 1)  # 0 means read-only. 1 means writeable."<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError opening dataset file:\\n{}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    in_layer = in_vec_ds.GetLayer()"<<"\n";
+    strOut<<"    in_crs = in_layer.GetSpatialRef()"<<"\n";
+    strOut<<"    in_crs_wkt = in_crs.ExportToWkt()"<<"\n";
+    strOut<<"    in_geometry_type = in_layer.GetGeomType()"<<"\n";
+    strOut<<"    if in_geometry_type != ogr.wkbPolygon \\"<<"\n";
+    strOut<<"            and in_geometry_type != ogr.wkbMultiPolygon \\"<<"\n";
+    strOut<<"            and in_geometry_type != ogr.wkbPolygonM and in_geometry_type != ogr.wkbPolygonZM:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot Polygon geometry type in file:\\n{}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    in_layer_definition = in_layer.GetLayerDefn()"<<"\n";
+    strOut<<"    number_of_features = in_layer.GetFeatureCount()"<<"\n";
+    strOut<<"    cont_feature = 0"<<"\n";
+    strOut<<"    input_values = []"<<"\n";
+    strOut<<"    position_in_input_values_by_feature_position = {}"<<"\n";
+    strOut<<"    output_field_name = str_date"<<"\n";
+    strOut<<"    output_field_name = output_field_name + '_' + 'dn'"<<"\n";
+    strOut<<"    if kmeans_clusters > -1:"<<"\n";
+    strOut<<"        output_field_name = output_field_name + 'k'"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        output_field_name = output_field_name + 'p'"<<"\n";
+    strOut<<"    output_field_id_index = in_layer_definition.GetFieldIndex(output_field_name)"<<"\n";
+    strOut<<"    if output_field_id_index == -1:"<<"\n";
+    strOut<<"        in_layer.CreateField(ogr.FieldDefn(output_field_name, ogr.OFTInteger))#ogr.OFTReal))"<<"\n";
+    strOut<<"    for feature in in_layer:"<<"\n";
+    strOut<<"        print('Processing plant: {}, of {}'.format(str(cont_feature + 1),"<<"\n";
+    strOut<<"                                                   str(number_of_features)))"<<"\n";
+    strOut<<"        plot_geometry_full = feature.GetGeometryRef().Clone()"<<"\n";
+    strOut<<"        crs_transform = None"<<"\n";
+    strOut<<"        if in_crs_wkt != orthomosaic_crs_wkt:"<<"\n";
+    strOut<<"            crs_transform = osr.CoordinateTransformation(in_crs, orthomosaic_crs)"<<"\n";
+    strOut<<"        if crs_transform:"<<"\n";
+    strOut<<"            plot_geometry_full.Transform(crs_transform)"<<"\n";
+    strOut<<"        plot_geometry = None"<<"\n";
+    strOut<<"        if orthomosaic_poly.Overlaps(plot_geometry_full):"<<"\n";
+    strOut<<"            plot_geometry = plot_geometry_full.Intersection(orthomosaic_poly)"<<"\n";
+    strOut<<"        if orthomosaic_poly.Contains(plot_geometry_full):"<<"\n";
+    strOut<<"            plot_geometry = plot_geometry_full"<<"\n";
+    strOut<<"        if orthomosaic_poly.Within(plot_geometry_full):"<<"\n";
+    strOut<<"            plot_geometry = orthomosaic_poly"<<"\n";
+    strOut<<"        if not plot_geometry:"<<"\n";
+    strOut<<"            continue"<<"\n";
+    strOut<<"        plot_geometry = plot_geometry_full.Intersection(orthomosaic_poly)"<<"\n";
+    strOut<<"        plot_geometry_area = plot_geometry.GetArea()"<<"\n";
+    strOut<<"        if plot_geometry_area < (3 * orthomosaic_pixel_area):"<<"\n";
+    strOut<<"            continue"<<"\n";
+    strOut<<"        geom_points_x = []"<<"\n";
+    strOut<<"        geom_points_y = []"<<"\n";
+    strOut<<"        geom_type_name = plot_geometry.GetGeometryName().lower()"<<"\n";
+    strOut<<"        if \"multipolygon\" in geom_type_name:"<<"\n";
+    strOut<<"            for i in range(0, plot_geometry.GetGeometryCount()):"<<"\n";
+    strOut<<"                ring = plot_geometry.GetGeometryRef(i).GetGeometryRef(0)"<<"\n";
+    strOut<<"                numpoints = ring.GetPointCount()"<<"\n";
+    strOut<<"                for p in range(numpoints):"<<"\n";
+    strOut<<"                    fc, sc, tc = ring.GetPoint(p)"<<"\n";
+    strOut<<"                    geom_points_x.append(fc)"<<"\n";
+    strOut<<"                    geom_points_y.append(sc)"<<"\n";
+    strOut<<"        elif \"polygon\" in geom_type_name:"<<"\n";
+    strOut<<"            ring = plot_geometry.GetGeometryRef(0)"<<"\n";
+    strOut<<"            numpoints = ring.GetPointCount()"<<"\n";
+    strOut<<"            for p in range(numpoints):"<<"\n";
+    strOut<<"                fc, sc, tc = ring.GetPoint(p)"<<"\n";
+    strOut<<"                geom_points_x.append(fc)"<<"\n";
+    strOut<<"                geom_points_y.append(sc)"<<"\n";
+    strOut<<"        else:"<<"\n";
+    strOut<<"            # sys.exit(\"ERROR: Geometry needs to be either Polygon or Multipolygon\")"<<"\n";
+    strOut<<"            continue"<<"\n";
+    strOut<<"        plot_geom_x_min = min(geom_points_x)"<<"\n";
+    strOut<<"        plot_geom_x_max = max(geom_points_x)"<<"\n";
+    strOut<<"        plot_geom_y_min = min(geom_points_y)"<<"\n";
+    strOut<<"        plot_geom_y_max = max(geom_points_y)"<<"\n";
+    strOut<<"        # Specify offset and rows and columns to read"<<"\n";
+    strOut<<"        rs_x_off = int((plot_geom_x_min - orthomosaic_x_origin) / rs_pixel_width)"<<"\n";
+    strOut<<"        rs_y_off = int((orthomosaic_y_origin - plot_geom_y_max) / rs_pixel_width)"<<"\n";
+    strOut<<"        x_ul = orthomosaic_x_origin + rs_x_off * rs_pixel_width"<<"\n";
+    strOut<<"        y_ul = orthomosaic_y_origin - rs_y_off * rs_pixel_width"<<"\n";
+    strOut<<"        rs_x_count = int((plot_geom_x_max - plot_geom_x_min) / rs_pixel_width) + 1"<<"\n";
+    strOut<<"        rs_y_count = int((plot_geom_y_max - plot_geom_y_min) / rs_pixel_width) + 1"<<"\n";
+    strOut<<"        # Create memory target raster"<<"\n";
+    strOut<<"        target_orthomosaic = gdal.GetDriverByName('MEM').Create('', rs_x_count, rs_y_count, 1, gdal.GDT_Byte)"<<"\n";
+    strOut<<"        target_orthomosaic.SetGeoTransform(("<<"\n";
+    strOut<<"            plot_geom_x_min, rs_pixel_width, 0,"<<"\n";
+    strOut<<"            plot_geom_y_max, 0, rs_pixel_height,"<<"\n";
+    strOut<<"        ))"<<"\n";
+    strOut<<"        # Create for target raster the same projection as for the value raster"<<"\n";
+    strOut<<"        raster_srs = osr.SpatialReference()"<<"\n";
+    strOut<<"        raster_srs.ImportFromWkt(orthomosaic_ds.GetProjectionRef())"<<"\n";
+    strOut<<"        target_orthomosaic.SetProjection(raster_srs.ExportToWkt())"<<"\n";
+    strOut<<"        target_orthomosaic.SetProjection(raster_srs.ExportToWkt())"<<"\n";
+    strOut<<"        feature_drv = ogr.GetDriverByName('ESRI Shapefile')"<<"\n";
+    strOut<<"        feature_ds= feature_drv.CreateDataSource(\"/vsimem/memory_name.shp\")"<<"\n";
+    strOut<<"        # geometryType = plot_geometry.getGeometryType()"<<"\n";
+    strOut<<"        feature_layer = feature_ds.CreateLayer(\"layer\", orthomosaic_crs, geom_type=plot_geometry.GetGeometryType())"<<"\n";
+    strOut<<"        featureDefnHeaders = feature_layer.GetLayerDefn()"<<"\n";
+    strOut<<"        out_feature = ogr.Feature(featureDefnHeaders)"<<"\n";
+    strOut<<"        out_feature.SetGeometry(plot_geometry)"<<"\n";
+    strOut<<"        feature_layer.CreateFeature(out_feature)"<<"\n";
+    strOut<<"        feature_ds.FlushCache()"<<"\n";
+    strOut<<"        # Rasterize zone polygon to raster blue"<<"\n";
+    strOut<<"        gdal.RasterizeLayer(target_orthomosaic, [1], feature_layer, burn_values=[1])"<<"\n";
+    strOut<<"        feature_orthomosaic_band_mask = target_orthomosaic.GetRasterBand(1)"<<"\n";
+    strOut<<"        feature_orthomosaic_data_mask = (feature_orthomosaic_band_mask.ReadAsArray(0, 0,"<<"\n";
+    strOut<<"                                                                                  rs_x_count, rs_y_count)"<<"\n";
+    strOut<<"                                         .astype(float))"<<"\n";
+    strOut<<"        # Mask zone of raster blue"<<"\n";
+    strOut<<"        feature_orthomosaic_data_blue = (orthomosaic_ds_rb_blue.ReadAsArray(rs_x_off, rs_y_off, rs_x_count, rs_y_count)"<<"\n";
+    strOut<<"                                    .astype(float))"<<"\n";
+    strOut<<"        feature_dsm_raster_array_blue = numpy.ma.masked_array(feature_orthomosaic_data_blue,"<<"\n";
+    strOut<<"                                                         numpy.logical_not(feature_orthomosaic_data_mask))"<<"\n";
+    strOut<<"        orthomosaic_first_indexes_blue, orthomosaic_second_indexes_blue = feature_dsm_raster_array_blue.nonzero()"<<"\n";
+    strOut<<"        # Mask zone of raster green"<<"\n";
+    strOut<<"        feature_orthomosaic_data_green = (orthomosaic_ds_rb_green.ReadAsArray(rs_x_off, rs_y_off, rs_x_count, rs_y_count)"<<"\n";
+    strOut<<"                                    .astype(float))"<<"\n";
+    strOut<<"        feature_dsm_raster_array_green = numpy.ma.masked_array(feature_orthomosaic_data_green,"<<"\n";
+    strOut<<"                                                         numpy.logical_not(feature_orthomosaic_data_mask))"<<"\n";
+    strOut<<"        orthomosaic_first_indexes_green, orthomosaic_second_indexes_green = feature_dsm_raster_array_green.nonzero()"<<"\n";
+    strOut<<"        # Mask zone of raster red"<<"\n";
+    strOut<<"        feature_orthomosaic_data_red = (orthomosaic_ds_rb_red.ReadAsArray(rs_x_off, rs_y_off, rs_x_count, rs_y_count)"<<"\n";
+    strOut<<"                                    .astype(float))"<<"\n";
+    strOut<<"        feature_dsm_raster_array_red = numpy.ma.masked_array(feature_orthomosaic_data_red,"<<"\n";
+    strOut<<"                                                         numpy.logical_not(feature_orthomosaic_data_mask))"<<"\n";
+    strOut<<"        orthomosaic_first_indexes_red, orthomosaic_second_indexes_red = feature_dsm_raster_array_red.nonzero()"<<"\n";
+    strOut<<"        # Mask zone of raster nir"<<"\n";
+    strOut<<"        feature_orthomosaic_data_nir = (orthomosaic_ds_rb_nir.ReadAsArray(rs_x_off, rs_y_off, rs_x_count, rs_y_count)"<<"\n";
+    strOut<<"                                    .astype(float))"<<"\n";
+    strOut<<"        feature_dsm_raster_array_nir = numpy.ma.masked_array(feature_orthomosaic_data_nir,"<<"\n";
+    strOut<<"                                                         numpy.logical_not(feature_orthomosaic_data_mask))"<<"\n";
+    strOut<<"        orthomosaic_first_indexes_nir, orthomosaic_second_indexes_nir = feature_dsm_raster_array_nir.nonzero()"<<"\n";
+    strOut<<"        ndvi_mean = 0."<<"\n";
+    strOut<<"        ndvi_min = 2."<<"\n";
+    strOut<<"        ndvi_max = -2."<<"\n";
+    strOut<<"        ndvi_number_of_values = 0"<<"\n";
+    strOut<<"        for i in range(len(orthomosaic_first_indexes_blue)):"<<"\n";
+    strOut<<"            fi = orthomosaic_first_indexes_blue[i]"<<"\n";
+    strOut<<"            si = orthomosaic_second_indexes_blue[i]"<<"\n";
+    strOut<<"            if (not fi in orthomosaic_first_indexes_green"<<"\n";
+    strOut<<"                    or not fi in orthomosaic_first_indexes_red"<<"\n";
+    strOut<<"                    or not fi in orthomosaic_first_indexes_nir):"<<"\n";
+    strOut<<"                continue"<<"\n";
+    strOut<<"            if (not si in orthomosaic_second_indexes_green"<<"\n";
+    strOut<<"                    or not si in orthomosaic_second_indexes_red"<<"\n";
+    strOut<<"                    or not si in orthomosaic_second_indexes_nir):"<<"\n";
+    strOut<<"                continue"<<"\n";
+    strOut<<"            blue = feature_dsm_raster_array_blue[fi][si] * factor_to_reflectance"<<"\n";
+    strOut<<"            green = feature_dsm_raster_array_green[fi][si] * factor_to_reflectance"<<"\n";
+    strOut<<"            red = feature_dsm_raster_array_red[fi][si] * factor_to_reflectance"<<"\n";
+    strOut<<"            nir = feature_dsm_raster_array_nir[fi][si] * factor_to_reflectance"<<"\n";
+    strOut<<"            if (blue < soil_maximum_rgb_reflectance"<<"\n";
+    strOut<<"                    and green < soil_maximum_rgb_reflectance"<<"\n";
+    strOut<<"                    and red < soil_maximum_rgb_reflectance):"<<"\n";
+    strOut<<"                continue"<<"\n";
+    strOut<<"            ndvi = (nir - red) / (red + nir)"<<"\n";
+    strOut<<"            if ndvi < crop_minimum_value:"<<"\n";
+    strOut<<"                continue"<<"\n";
+    strOut<<"            ndvi_mean = ndvi_mean + ndvi"<<"\n";
+    strOut<<"            if ndvi < ndvi_min:"<<"\n";
+    strOut<<"                ndvi_min = ndvi"<<"\n";
+    strOut<<"            if ndvi > ndvi_max:"<<"\n";
+    strOut<<"                ndvi_max = ndvi"<<"\n";
+    strOut<<"            ndvi_number_of_values = ndvi_number_of_values + 1"<<"\n";
+    strOut<<"        if ndvi_number_of_values > 0:"<<"\n";
+    strOut<<"            ndvi_mean = ndvi_mean / ndvi_number_of_values"<<"\n";
+    strOut<<"            input_value = {}"<<"\n";
+    strOut<<"            input_value['position'] = cont_feature"<<"\n";
+    strOut<<"            input_value['value'] = ndvi_mean"<<"\n";
+    strOut<<"            input_values.append(input_value)"<<"\n";
+    strOut<<"            position_in_input_values_by_feature_position[cont_feature] = len(input_values) - 1"<<"\n";
+    strOut<<"        else:"<<"\n";
+    strOut<<"            ndvi_mean = -1"<<"\n";
+    strOut<<"        cont_feature = cont_feature + 1"<<"\n";
+    strOut<<"    if kmeans_clusters > -1:"<<"\n";
+    strOut<<"        input_values_cv = numpy.zeros([len(input_values), 1], dtype=numpy.float32)"<<"\n";
+    strOut<<"        cont_feature_crop = 0"<<"\n";
+    strOut<<"        for input_value in input_values:"<<"\n";
+    strOut<<"            input_values_cv[cont_feature_crop][0] = input_value['value']"<<"\n";
+    strOut<<"            cont_feature_crop = cont_feature_crop + 1"<<"\n";
+    strOut<<"        # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )"<<"\n";
+    strOut<<"        # criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0)"<<"\n";
+    strOut<<"        criteria = (cv.TERM_CRITERIA_MAX_ITER, 100, 1.0)"<<"\n";
+    strOut<<"        flags = cv.KMEANS_RANDOM_CENTERS"<<"\n";
+    strOut<<"        compactness, labels, centers = cv.kmeans(input_values_cv, kmeans_clusters,"<<"\n";
+    strOut<<"                                                 None, criteria, 10, flags)"<<"\n";
+    strOut<<"        pos_center_min_value = -1"<<"\n";
+    strOut<<"        center_min_value = 100000000."<<"\n";
+    strOut<<"        for i in range(6):"<<"\n";
+    strOut<<"            if centers[i] < center_min_value:"<<"\n";
+    strOut<<"                center_min_value = centers[i]"<<"\n";
+    strOut<<"                pos_center_min_value = i"<<"\n";
+    strOut<<"        cont_feature = 0"<<"\n";
+    strOut<<"        for feature in in_layer:"<<"\n";
+    strOut<<"            damaged = 0"<<"\n";
+    strOut<<"            if not cont_feature in position_in_input_values_by_feature_position:"<<"\n";
+    strOut<<"                damaged = -1"<<"\n";
+    strOut<<"            else:"<<"\n";
+    strOut<<"                pos_in_input_values = position_in_input_values_by_feature_position[cont_feature]"<<"\n";
+    strOut<<"                pos_center = labels[position_in_input_values_by_feature_position[cont_feature]][0]"<<"\n";
+    strOut<<"                if pos_center == pos_center_min_value:"<<"\n";
+    strOut<<"                    damaged = 1"<<"\n";
+    strOut<<"            cont_feature = cont_feature + 1"<<"\n";
+    strOut<<"            feature.SetField(output_field_name, damaged)"<<"\n";
+    strOut<<"            in_layer.SetFeature(feature)"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        input_values.sort(key=sortFunction)"<<"\n";
+    strOut<<"        damage_positions = []"<<"\n";
+    strOut<<"        number_of_damages = 0"<<"\n";
+    strOut<<"        threshold_value = -1"<<"\n";
+    strOut<<"        for i in range(0, len(input_values)):"<<"\n";
+    strOut<<"            damage_positions.append(input_values[i]['position'])"<<"\n";
+    strOut<<"            if number_of_damages / number_of_features > percentile_minimum_threshold:"<<"\n";
+    strOut<<"                threshold_value = input_values[i]['value']"<<"\n";
+    strOut<<"                break"<<"\n";
+    strOut<<"            number_of_damages = number_of_damages + 1"<<"\n";
+    strOut<<"        cont_feature = 0"<<"\n";
+    strOut<<"        for feature in in_layer:"<<"\n";
+    strOut<<"            damaged = 0"<<"\n";
+    strOut<<"            if not cont_feature in position_in_input_values_by_feature_position:"<<"\n";
+    strOut<<"                damaged = -1"<<"\n";
+    strOut<<"            else:"<<"\n";
+    strOut<<"                if cont_feature in damage_positions:"<<"\n";
+    strOut<<"                    damaged = 1"<<"\n";
+    strOut<<"            cont_feature = cont_feature + 1"<<"\n";
+    strOut<<"            feature.SetField(output_field_name, damaged)"<<"\n";
+    strOut<<"            in_layer.SetFeature(feature)"<<"\n";
+    strOut<<"    in_vec_ds = None"<<"\n";
+    strOut<<"    return str_error"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def main():"<<"\n";
+    strOut<<"    # =================="<<"\n";
+    strOut<<"    # parse command line"<<"\n";
+    strOut<<"    # =================="<<"\n";
+    strOut<<"    usage = \"usage: %prog [options] \""<<"\n";
+    strOut<<"    parser = OptionParser(usage=usage)"<<"\n";
+    strOut<<"    parser.add_option(\"--input_crops_frames_shp\", dest=\"input_crops_frames_shp\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Crops frames shapefile\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--method_data\", dest=\"method_data\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Method input data type: gcc, vol or ndvi\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--method_segmentation\", dest=\"method_segmentation\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Method segmentation: kmeans or percentile\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--crop_minimum_value\", dest=\"crop_minimum_value\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Crop minimum value: gcc (per unit), vol (dm3) or NDVI (per unit)\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--kmeans_clusters\", dest=\"kmeans_clusters\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Number of cluster for kmeans segmentation\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--percentile_minimum_threshold\", dest=\"percentile_minimum_threshold\", action=\"store\","<<"\n";
+    strOut<<"                      type=\"string\", help=\"Minimum value (per unit) for percentile segmentation\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--input_orthomosaic\", dest=\"input_orthomosaic\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Input multispectral orthomosaic, for ndvi method\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--blue_band_position\", dest=\"blue_band_position\", action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"Blue band position in multispectral orthomosaic, for ndvi method\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--green_band_position\", dest=\"green_band_position\", action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"Green band position in multispectral orthomosaic, for ndvi method\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--red_band_position\", dest=\"red_band_position\", action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"Red band position in multispectral orthomosaic, for ndvi method\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--nir_band_position\", dest=\"nir_band_position\", action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"Nir band position in multispectral orthomosaic, for ndvi method\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--factor_to_reflectance\", dest=\"factor_to_reflectance\", action=\"store\","<<"\n";
+    strOut<<"                      type=\"string\", help=\"Factor for convert band values to reflectance (per unit), for ndvi method\","<<"\n";
+    strOut<<"                      default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--soil_maximum_rgb_reflectance\", dest=\"soil_maximum_rgb_reflectance\", action=\"store\","<<"\n";
+    strOut<<"                      type=\"string\", help=\"Soil maximum RGB reflectance (per unit) from orthomosaic, for ndvi method\","<<"\n";
+    strOut<<"                      default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--output_shp\", dest=\"output_shp\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Output shapefile or none for use input shapefile\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--date_from_orthomosaic_file\", dest=\"date_from_orthomosaic_file\", action=\"store\","<<"\n";
+    strOut<<"                      type=\"int\", help=\"Read date from orthomosaic file name: 1-yes, 0-No, for ndvi method\","<<"\n";
+    strOut<<"                      default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--orthomosaic_file_string_separator\", dest=\"orthomosaic_file_string_separator\","<<"\n";
+    strOut<<"                      action=\"store\", type=\"string\", help=\"Orthomosaic file string separator, for ndvi method\","<<"\n";
+    strOut<<"                      default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--orthomosaic_file_date_string_position\", dest=\"orthomosaic_file_date_string_position\","<<"\n";
+    strOut<<"                      action=\"store\", type=\"int\","<<"\n";
+    strOut<<"                      help=\"Orthomosaic file date string position, for ndvi method\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--date_format\", dest=\"date_format\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Date format (%Y%m%d, ...)\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--date\", dest=\"date\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"None or date value no from orthomosaic files, for ndvi method\", default=None)"<<"\n";
+    strOut<<"    parser.add_option(\"--input_field\", dest=\"input_field\", action=\"store\", type=\"string\","<<"\n";
+    strOut<<"                      help=\"Input field name of GCC or VOL, for gcc or vol methods\", default=None)"<<"\n";
+    strOut<<"    (options, args) = parser.parse_args()"<<"\n";
+    strOut<<"    if not options.input_crops_frames_shp:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    input_shp = options.input_crops_frames_shp"<<"\n";
+    strOut<<"    if not exists(input_shp):"<<"\n";
+    strOut<<"        print(\"Error:\\nInput crops shapefile does not exists:\\n{}\".format(input_shp))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    if not options.output_shp:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    use_input_shp = True"<<"\n";
+    strOut<<"    output_shp = options.output_shp"<<"\n";
+    strOut<<"    if output_shp != 'none':"<<"\n";
+    strOut<<"        use_input_shp = False"<<"\n";
+    strOut<<"    if not options.method_segmentation:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    method_segmentation = options.method_segmentation"<<"\n";
+    strOut<<"    kmeans_clusters = -1"<<"\n";
+    strOut<<"    percentile_minimum_threshold = -1."<<"\n";
+    strOut<<"    if method_segmentation == 'kmeans':"<<"\n";
+    strOut<<"        if not options.kmeans_clusters:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        str_kmeans_clusters = options.kmeans_clusters"<<"\n";
+    strOut<<"        if not is_number(str_kmeans_clusters):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for kmeans clusters: {}\"."<<"\n";
+    strOut<<"                  format(str_kmeans_clusters))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        kmeans_clusters = int(str_kmeans_clusters)"<<"\n";
+    strOut<<"        if kmeans_clusters < 2 or kmeans_clusters > 20:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for kmeans clusters: {}\"."<<"\n";
+    strOut<<"                  format(str_kmeans_clusters))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"    elif method_segmentation == 'percentile':"<<"\n";
+    strOut<<"        if not options.percentile_minimum_threshold:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        str_percentile_minimum_threshold = options.percentile_minimum_threshold"<<"\n";
+    strOut<<"        if not is_number(str_percentile_minimum_threshold):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for percentile minimum threshold: {}\"."<<"\n";
+    strOut<<"                  format(str_percentile_minimum_threshold))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        percentile_minimum_threshold = float(str_percentile_minimum_threshold)"<<"\n";
+    strOut<<"        if percentile_minimum_threshold < 0 or percentile_minimum_threshold > 1:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for percentile minimum threshold: {}\"."<<"\n";
+    strOut<<"                  format(str_percentile_minimum_threshold))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"    if kmeans_clusters < 0 and percentile_minimum_threshold < 0:"<<"\n";
+    strOut<<"        print(\"Error:\\nMethod segmentation must be: kmeans or percentile\")"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    if not options.method_data:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    method_data = options.method_data"<<"\n";
+    strOut<<"    ndvi = False"<<"\n";
+    strOut<<"    gcc = False"<<"\n";
+    strOut<<"    vol = False"<<"\n";
+    strOut<<"    if method_data == 'ndvi':"<<"\n";
+    strOut<<"        ndvi = True"<<"\n";
+    strOut<<"    elif method_data == 'gcc':"<<"\n";
+    strOut<<"        gcc = True"<<"\n";
+    strOut<<"    elif method_data == 'vol':"<<"\n";
+    strOut<<"        vol = True"<<"\n";
+    strOut<<"    if not ndvi and not gcc and not vol:"<<"\n";
+    strOut<<"        print(\"Error:\\nMethod data must be: ndvi, gcc or vol\")"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    if not options.crop_minimum_value:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    str_crop_minimum_value = options.crop_minimum_value"<<"\n";
+    strOut<<"    if not is_number(str_crop_minimum_value):"<<"\n";
+    strOut<<"        print(\"Error:\\nInvalid value for crop minimum value: {}\"."<<"\n";
+    strOut<<"              format(str_crop_minimum_value))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    crop_minimum_value = float(str_crop_minimum_value)"<<"\n";
+    strOut<<"    if ndvi:"<<"\n";
+    strOut<<"        if crop_minimum_value < 0 or crop_minimum_value > 1:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for crop minimum NDVI value: {}\"."<<"\n";
+    strOut<<"                  format(str_crop_minimum_value))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"    elif gcc:"<<"\n";
+    strOut<<"        if crop_minimum_value < 0 or crop_minimum_value > 10:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for crop minimum GCC value: {}\"."<<"\n";
+    strOut<<"                  format(str_crop_minimum_value))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"    elif vol:"<<"\n";
+    strOut<<"        if crop_minimum_value < 0 or crop_minimum_value > 10000:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for crop minimum VOL value: {}\"."<<"\n";
+    strOut<<"                  format(str_crop_minimum_value))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"    if not options.date_format:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    date_format = options.date_format.strip()"<<"\n";
+    strOut<<"    input_field = None"<<"\n";
+    strOut<<"    if not use_input_shp:"<<"\n";
+    strOut<<"        str_error = copy_shapefile(input_shp, output_shp)"<<"\n";
+    strOut<<"        if str_error:"<<"\n";
+    strOut<<"            print(\"Error:\\n{}\".format(str_error))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        input_shp = output_shp"<<"\n";
+    strOut<<"    if gcc or vol:"<<"\n";
+    strOut<<"        if not options.input_field:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        input_field = options.input_field"<<"\n";
+    strOut<<"        str_error = process_gcc_or_vol(input_shp,"<<"\n";
+    strOut<<"                                       crop_minimum_value,"<<"\n";
+    strOut<<"                                       kmeans_clusters,"<<"\n";
+    strOut<<"                                       percentile_minimum_threshold,"<<"\n";
+    strOut<<"                                       gcc,"<<"\n";
+    strOut<<"                                       vol,"<<"\n";
+    strOut<<"                                       input_field,"<<"\n";
+    strOut<<"                                       date_format)"<<"\n";
+    strOut<<"        if str_error:"<<"\n";
+    strOut<<"            print(\"Error:\\n{}\".format(str_error))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        print(\"... Process finished\")"<<"\n";
+    strOut<<"    elif ndvi:"<<"\n";
+    strOut<<"        if not options.input_orthomosaic:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        input_orthomosaic = options.input_orthomosaic"<<"\n";
+    strOut<<"        if not exists(input_orthomosaic):"<<"\n";
+    strOut<<"            print(\"Error:\\nInput orthomosaic does not exists:\\n{}\".format(input_orthomosaic))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        if not options.blue_band_position:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        str_blue_band_position = options.blue_band_position"<<"\n";
+    strOut<<"        if not is_number(str_blue_band_position):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for blue band position: {}\"."<<"\n";
+    strOut<<"                  format(str_blue_band_position))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        blue_band_position = int(str_blue_band_position)"<<"\n";
+    strOut<<"        if blue_band_position < 1 or blue_band_position > 8:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for blue band position: {}\"."<<"\n";
+    strOut<<"                  format(str_blue_band_position))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        str_green_band_position = options.green_band_position"<<"\n";
+    strOut<<"        if not is_number(str_green_band_position):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for green band position: {}\"."<<"\n";
+    strOut<<"                  format(str_green_band_position))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        green_band_position = int(str_green_band_position)"<<"\n";
+    strOut<<"        if green_band_position < 1 or green_band_position > 8:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for green band position: {}\"."<<"\n";
+    strOut<<"                  format(str_green_band_position))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        if green_band_position == blue_band_position:"<<"\n";
+    strOut<<"            print(\"Error:\\nBand positions must be different\")"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        str_red_band_position = options.red_band_position"<<"\n";
+    strOut<<"        if not is_number(str_red_band_position):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for green band position: {}\"."<<"\n";
+    strOut<<"                  format(str_red_band_position))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        red_band_position = int(str_red_band_position)"<<"\n";
+    strOut<<"        if red_band_position < 1 or red_band_position > 8:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for green band position: {}\"."<<"\n";
+    strOut<<"                  format(str_red_band_position))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        if red_band_position == blue_band_position or red_band_position == green_band_position:"<<"\n";
+    strOut<<"            print(\"Error:\\nBand positions must be different\")"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        str_nir_band_position = options.nir_band_position"<<"\n";
+    strOut<<"        if not is_number(str_nir_band_position):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for green band position: {}\"."<<"\n";
+    strOut<<"                  format(str_nir_band_position))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        nir_band_position = int(str_nir_band_position)"<<"\n";
+    strOut<<"        if nir_band_position < 1 or nir_band_position > 8:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for green band position: {}\"."<<"\n";
+    strOut<<"                  format(str_nir_band_position))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        if nir_band_position == blue_band_position or nir_band_position == green_band_position \\"<<"\n";
+    strOut<<"                or nir_band_position == red_band_position:"<<"\n";
+    strOut<<"            print(\"Error:\\nBand positions must be different\")"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        if not options.soil_maximum_rgb_reflectance:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        str_factor_to_reflectance = options.factor_to_reflectance"<<"\n";
+    strOut<<"        if not is_number(str_factor_to_reflectance):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for factor to reflectance: {}\"."<<"\n";
+    strOut<<"                  format(str_factor_to_reflectance))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        factor_to_reflectance = float(str_factor_to_reflectance)"<<"\n";
+    strOut<<"        if factor_to_reflectance < 0 or factor_to_reflectance > 10000.:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for factor to reflectance: {}\"."<<"\n";
+    strOut<<"                  format(str_factor_to_reflectance))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        str_soil_maximum_rgb_reflectance = options.soil_maximum_rgb_reflectance"<<"\n";
+    strOut<<"        if not is_number(str_soil_maximum_rgb_reflectance):"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for percentile minimum threshold: {}\"."<<"\n";
+    strOut<<"                  format(str_soil_maximum_rgb_reflectance))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        soil_maximum_rgb_reflectance = float(str_soil_maximum_rgb_reflectance)"<<"\n";
+    strOut<<"        if soil_maximum_rgb_reflectance < 0 or soil_maximum_rgb_reflectance > 1:"<<"\n";
+    strOut<<"            print(\"Error:\\nInvalid value for soil maximum RGB reflectance: {}\"."<<"\n";
+    strOut<<"                  format(str_soil_maximum_rgb_reflectance))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        if options.date_from_orthomosaic_file == None:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        date_from_orthomosaic = False"<<"\n";
+    strOut<<"        if options.date_from_orthomosaic_file == 1:"<<"\n";
+    strOut<<"            date_from_orthomosaic = True"<<"\n";
+    strOut<<"        date = None"<<"\n";
+    strOut<<"        if not date_from_orthomosaic:"<<"\n";
+    strOut<<"            if options.date == 'none':"<<"\n";
+    strOut<<"                print(\"Error:\\nDate must be a value if not read from orthomosaic file name\")"<<"\n";
+    strOut<<"                return"<<"\n";
+    strOut<<"            str_date = options.date"<<"\n";
+    strOut<<"            is_date = True"<<"\n";
+    strOut<<"            if len(options.date) == 6:"<<"\n";
+    strOut<<"                str_date = '20' + str_date"<<"\n";
+    strOut<<"            try:"<<"\n";
+    strOut<<"                date = datetime.datetime.strptime(str_date, date_format)"<<"\n";
+    strOut<<"            except ValueError as error:"<<"\n";
+    strOut<<"                is_date = False"<<"\n";
+    strOut<<"            if not is_date:"<<"\n";
+    strOut<<"                print(\"Error:\\nInvalid string date from orthomosaic name: {} and format: {}\"."<<"\n";
+    strOut<<"                      format(options.date, date_format))"<<"\n";
+    strOut<<"                return"<<"\n";
+    strOut<<"        else:"<<"\n";
+    strOut<<"            if not options.orthomosaic_file_string_separator:"<<"\n";
+    strOut<<"                parser.print_help()"<<"\n";
+    strOut<<"                return"<<"\n";
+    strOut<<"            orthomosaic_file_string_separator = options.orthomosaic_file_string_separator"<<"\n";
+    strOut<<"            if not options.orthomosaic_file_date_string_position:"<<"\n";
+    strOut<<"                parser.print_help()"<<"\n";
+    strOut<<"                return"<<"\n";
+    strOut<<"            orthomosaic_file_date_string_position = options.orthomosaic_file_date_string_position"<<"\n";
+    strOut<<"            orthomosaic_file_name_without_path = os.path.splitext(os.path.basename(input_orthomosaic))[0]"<<"\n";
+    strOut<<"            orthomosaic_file_name_values = orthomosaic_file_name_without_path.split(orthomosaic_file_string_separator)"<<"\n";
+    strOut<<"            if (orthomosaic_file_date_string_position < 0"<<"\n";
+    strOut<<"                    or orthomosaic_file_date_string_position > len(orthomosaic_file_name_values)):"<<"\n";
+    strOut<<"                print(\"Error:\\nInvalid value for orthomosaic files date string position: {}\"."<<"\n";
+    strOut<<"                      format(str(orthomosaic_file_date_string_position)))"<<"\n";
+    strOut<<"                return"<<"\n";
+    strOut<<"            str_date = orthomosaic_file_name_values[orthomosaic_file_date_string_position - 1]"<<"\n";
+    strOut<<"            is_date = True"<<"\n";
+    strOut<<"            if len(str_date) == 6:"<<"\n";
+    strOut<<"                str_date = '20' + str_date"<<"\n";
+    strOut<<"            try:"<<"\n";
+    strOut<<"                date = datetime.datetime.strptime(str_date, date_format)"<<"\n";
+    strOut<<"            except ValueError as error:"<<"\n";
+    strOut<<"                is_date = False"<<"\n";
+    strOut<<"            if not is_date:"<<"\n";
+    strOut<<"                print(\"Error:\\nInvalid string date from orthomosaic name: {} and format: {}\"."<<"\n";
+    strOut<<"                      format(orthomosaic_file_name_values[orthomosaic_file_date_string_position - 1],"<<"\n";
+    strOut<<"                             date_format))"<<"\n";
+    strOut<<"                return"<<"\n";
+    strOut<<"        str_date = str(date.strftime('%Y')[2:4]) + str(date.strftime('%m')) + str(date.strftime('%d'))"<<"\n";
+    strOut<<"        str_error = process_ndvi(input_shp,"<<"\n";
+    strOut<<"                                 kmeans_clusters,"<<"\n";
+    strOut<<"                                 percentile_minimum_threshold,"<<"\n";
+    strOut<<"                                 input_orthomosaic,"<<"\n";
+    strOut<<"                                 blue_band_position,"<<"\n";
+    strOut<<"                                 green_band_position,"<<"\n";
+    strOut<<"                                 red_band_position,"<<"\n";
+    strOut<<"                                 nir_band_position,"<<"\n";
+    strOut<<"                                 factor_to_reflectance,"<<"\n";
+    strOut<<"                                 soil_maximum_rgb_reflectance,"<<"\n";
+    strOut<<"                                 crop_minimum_value,"<<"\n";
+    strOut<<"                                 str_date)"<<"\n";
+    strOut<<"        if str_error:"<<"\n";
+    strOut<<"            print(\"Error:\\n{}\".format(str_error))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        print(\"... Process finished\")"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"if __name__ == '__main__':"<<"\n";
+    strOut<<"    main()"<<"\n";
+
+    file.close();
+    return(true);
+}
+
 void PAFyCToolsDialog::on_qgisPathPushButton_clicked()
 {
     QString functionName="on_qgisPathPushButton_clicked";
@@ -3417,6 +4847,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_BCVRM,Qt::CaseInsensitive)==0)
     {
         if(!process_bcvrm(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI,Qt::CaseInsensitive)==0)
+    {
+        if(!process_cmndvi(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
