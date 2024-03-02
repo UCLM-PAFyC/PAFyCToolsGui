@@ -157,6 +157,7 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CCFPGP);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_BCVRM);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CMNDVI);
+    mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CMGCCVOL);
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
@@ -2392,6 +2393,310 @@ bool PAFyCToolsDialog::process_bcvrm(QString &qgisPath,
     return(true);
 }
 
+bool PAFyCToolsDialog::process_cmgccvol(QString &qgisPath,
+                                        QString &outputPath,
+                                        QString &strError)
+{
+    mFilesToRemove.clear();
+    QString command=PAFYCTOOLSGUI_COMMAND_CMGCCVOL;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,framesShapefile,outputShapefile,parameterCode;
+    QString strAuxError,dateFormat,segmentationMethod,methodData,dataFieldName;
+    int intValue,numberOfClustersForKmeans;
+    double dblValue,cropsMininumValue,minimumValueForPercentile;
+    bool okToNumber;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_FRAMES_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    framesShapefile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_OUTPUT_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!strValue.isEmpty())
+    {
+//        if(QFile::exists(strValue))
+//        {
+//            strError=functionName;
+//            strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+//                    .arg(parameterCode).arg(strValue);
+//            return(false);
+//        }
+        outputShapefile=strValue;
+    }
+    else
+    {
+        outputShapefile="none";
+//        QString strDateTime=QDateTime::toString("yyyyddMM_hhmmss");
+//        QFileInfo fileInfo(framesShapefile);
+//        QString auxPath=fileInfo.absolutePath();
+//        QString auxCompleteBaseName=fileInfo.completeBaseName();
+//        QString auxSuffix=fileInfo.completeSuffix();
+//        QString newShapefile=auxPath+"/"+auxCompleteBaseName;
+//        newShapefile+="_";
+//        newShapefile+=strDateTime;
+//        newShapefile+=".";
+//        newShapefile+=auxSuffix;
+//        copyShapefile(framesShapefile,newShapefile);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_CROPS_MINIMUM_VALUE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    cropsMininumValue=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_SEGMENTATION_METHOD;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    segmentationMethod=strValue;
+    if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_SEGMENTATION_METHOD_KMEANS,Qt::CaseInsensitive)==0)
+    {
+        parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_NUMBER_OF_CLUSTERS_FOR_KMEANS;
+        ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+        if(ptrParameter==NULL)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                    .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+            return(false);
+        }
+        ptrParameter->getValue(strValue);
+        strValue=strValue.trimmed();
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        numberOfClustersForKmeans=intValue;
+    }
+    else if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_SEGMENTATION_METHOD_PERCENTILE,Qt::CaseInsensitive)==0)
+    {
+        parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_MINIMUM_VALUE_FOR_PERCENTILE;
+        ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+        if(ptrParameter==NULL)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                    .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+            return(false);
+        }
+        ptrParameter->getValue(strValue);
+        strValue=strValue.trimmed();
+        okToNumber=false;
+        dblValue=strValue.toDouble(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        minimumValueForPercentile=dblValue;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_METHOD_DATA;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    methodData=strValue;
+    if(methodData.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_METHOD_DATA_GCC,Qt::CaseInsensitive)!=0
+            &&methodData.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_METHOD_DATA_VOL,Qt::CaseInsensitive)!=0)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nInvalid value for parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        strError+=QObject::tr("\nMust be gcc or vol");
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_DATE_FORMAT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFormat=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_DATA_FIELD_NAME;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    dataFieldName=strValue.trimmed();
+
+    mPythonFiles.clear();
+    QString pythonFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_CMGCCVOL_PYTHON_FILE;
+    if(!writePythonProgramCropMonitoringFromPhotogrammetricGeomaticProducts(pythonFileName,
+                                                                            strAuxError))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError writting python file:\n%1").arg(strAuxError);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    mPythonFiles.append(pythonFileName);
+
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_CMGCCVOL_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nHa fallado la eliminación del fichero:\n%1").arg(processFileName);
+            QFile::remove(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nHa fallado la apertura del fichero:\n%1").arg(processFileName);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+
+    /*
+    gcc_or_vol, gcc, kmeans
+    --input_crops_frames_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_gcc_vol_allDates.shp"
+ --method_data gcc --crop_minimum_value 0.02 --method_segmentation  kmeans --kmeans_clusters 6 --input_field "220905_gcc"
+ --output_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_gcc_vol_allDates_gcc_kmeans.shp"
+ --date_format="%Y%m%d"
+
+    gcc_or_vol, gcc, percentile
+    --input_crops_frames_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_gcc_vol_allDates.shp"
+ --method_data gcc --crop_minimum_value 0.02 --method_segmentation  percentile --percentile_minimum_threshold 0.05
+ --input_field "220905_gcc" --output_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_gcc_vol_allDates_gcc_percentile.shp"
+ --date_format="%Y%m%d"
+
+    gcc_or_vol, vol, kmeans
+    --input_crops_frames_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_gcc_vol_allDates.shp"
+ --method_data vol --crop_minimum_value 0.1 --method_segmentation  kmeans --kmeans_clusters 6 --input_field "220812_vol"
+ --output_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_gcc_vol_allDates_vol_kmeans.shp"
+ --date_format="%Y%m%d"
+
+    gcc_or_vol, vol, percentile
+    --input_crops_frames_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_gcc_vol_allDates.shp"
+ --method_data vol --crop_minimum_value 0.1 --method_segmentation  percentile --percentile_minimum_threshold 0.05
+ --input_field "220812_vol" --output_shp "D:\PAFyCToolsGui\20220426_Tarazona_Vid_A6000\output\vines_frames_gcc_vol_allDates_vol_kmeans.shp"
+ --date_format="%Y%m%d"
+    */
+
+    strOut<<"echo off"<<"\n";
+    strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+    strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+    strOut<<"set TOOL="<<pythonFileName<<"\n";
+    strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+    strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+    strOut<<"python %TOOL% ";
+    strOut<<"--input_crops_frames_shp \""<<framesShapefile <<"\" ";
+    strOut<<"--output_shp \""<<outputShapefile<<"\" ";
+    strOut<<"--date_format="<<dateFormat<<" ";
+    strOut<<"--crop_minimum_value "<<QString::number(cropsMininumValue,'f',2)<<" ";
+    strOut<<"--method_data "<<methodData<<" ";
+    strOut<<"--method_segmentation "<<segmentationMethod<<" ";
+    if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_SEGMENTATION_METHOD_KMEANS,Qt::CaseInsensitive)==0)
+    {
+        strOut<<"--kmeans_clusters "<<QString::number(numberOfClustersForKmeans)<<" ";
+    }
+    else if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL_TAG_SEGMENTATION_METHOD_PERCENTILE,Qt::CaseInsensitive)==0)
+    {
+        strOut<<"--percentile_minimum_threshold "<<QString::number(minimumValueForPercentile,'f',2)<<" ";
+    }
+    strOut<<"--input_field="<<dataFieldName<<"\n";
+    file.close();
+
+    //    mFilesToRemove.push_back(processFileName);
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+    return(true);
+}
+
 bool PAFyCToolsDialog::process_cmndvi(QString &qgisPath,
                                       QString &outputPath,
                                       QString &strError)
@@ -2853,14 +3158,6 @@ bool PAFyCToolsDialog::process_cmndvi(QString &qgisPath,
     //    dateFormat=dateFormat.replace("%","%%");
     //    strOut<<"--date_format=\""<<dateFormat<<"\" ";
     strOut<<"--date_format="<<dateFormat<<" ";
-    if(str_date.compare("none",Qt::CaseInsensitive)==0)
-    {
-        strOut<<"--date="<<str_date<<"\n";
-    }
-    else
-    {
-        strOut<<"--date=\""<<str_date<<"\"\n";
-    }
     strOut<<"--factor_to_reflectance "<<QString::number(factorToReflectance,'f',6)<<" ";
     strOut<<"--crop_minimum_value "<<QString::number(cropsMininumNDVI,'f',2)<<" ";
     strOut<<"--soil_maximum_rgb_reflectance "<<QString::number(soilRGBMaximumReflectance,'f',2)<<" ";
@@ -2868,7 +3165,7 @@ bool PAFyCToolsDialog::process_cmndvi(QString &qgisPath,
     strOut<<"--green_band_position "<<QString::number(greenBandPosition)<<" ";
     strOut<<"--red_band_position "<<QString::number(redBandPosition)<<" ";
     strOut<<"--nir_band_position "<<QString::number(nirBandPosition)<<" ";
-    strOut<<"--method_data ndvi --method_data "<<segmentationMethod<<" ";
+    strOut<<"--method_data ndvi --method_segmentation "<<segmentationMethod<<" ";
     if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_SEGMENTATION_METHOD_KMEANS,Qt::CaseInsensitive)==0)
     {
         strOut<<"--kmeans_clusters "<<QString::number(numberOfClustersForKmeans)<<" ";
@@ -2876,6 +3173,14 @@ bool PAFyCToolsDialog::process_cmndvi(QString &qgisPath,
     else if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI_TAG_SEGMENTATION_METHOD_PERCENTILE,Qt::CaseInsensitive)==0)
     {
         strOut<<"--percentile_minimum_threshold "<<QString::number(minimumValueForPercentile,'f',2)<<" ";
+    }
+    if(str_date.compare("none",Qt::CaseInsensitive)==0)
+    {
+        strOut<<"--date="<<str_date<<"\n";
+    }
+    else
+    {
+        strOut<<"--date=\""<<str_date<<"\"\n";
     }
     file.close();
 
@@ -4858,6 +5163,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI,Qt::CaseInsensitive)==0)
     {
         if(!process_cmndvi(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL,Qt::CaseInsensitive)==0)
+    {
+        if(!process_cmgccvol(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")

@@ -60,6 +60,9 @@ private:
     bool process_bcvrm(QString& qgisPath,
                        QString& outputPath,
                        QString& strError);
+    bool process_cmgccvol(QString& qgisPath,
+                          QString& outputPath,
+                          QString& strError);
     bool process_cmndvi(QString& qgisPath,
                         QString& outputPath,
                         QString& strError);
