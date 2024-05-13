@@ -3214,11 +3214,437 @@ bool PAFyCToolsDialog::process_cwsitho(QString &qgisPath,
     QString strAuxError,dateFormat,dateFromOrthomosaicFileStringSeparator,segmentationMethod;
     int intValue,dateTagPositionInOrthomosaicFile,numberOfClustersForKmeans;
     double upperLineCoefA,upperLineCoefB,lowerLineCoefA,lowerLineCoefB;
-    double dblValue,factorToTemperature,minimumValueForPercentile;
+    double dblValue,factorToTemperature,maximumValueForPercentile;
+    double temperature,relativeHumidity;
     bool okToNumber,dateFromOrthomosaciFile;
     Parameter* ptrParameter=NULL;
     QDir auxDir=QDir::currentPath();
 
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_FRAMES_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    framesShapefile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_THERMAL_ORTHOMOSAIC_FILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    orthomosaicFile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_OUTPUT_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!strValue.isEmpty())
+    {
+//        if(QFile::exists(strValue))
+//        {
+//            strError=functionName;
+//            strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+//                    .arg(parameterCode).arg(strValue);
+//            return(false);
+//        }
+        outputShapefile=strValue;
+    }
+    else
+    {
+        outputShapefile="none";
+//        QString strDateTime=QDateTime::toString("yyyyddMM_hhmmss");
+//        QFileInfo fileInfo(framesShapefile);
+//        QString auxPath=fileInfo.absolutePath();
+//        QString auxCompleteBaseName=fileInfo.completeBaseName();
+//        QString auxSuffix=fileInfo.completeSuffix();
+//        QString newShapefile=auxPath+"/"+auxCompleteBaseName;
+//        newShapefile+="_";
+//        newShapefile+=strDateTime;
+//        newShapefile+=".";
+//        newShapefile+=auxSuffix;
+//        copyShapefile(framesShapefile,newShapefile);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_AIR_TEMPERATURE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    temperature=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_RELATIVE_HUMIDITY;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    relativeHumidity=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_FRAMES_UPPER_BASE_LINE_COEFFICIENT_A;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    upperLineCoefA=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_FRAMES_UPPER_BASE_LINE_COEFFICIENT_B;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    upperLineCoefB=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_FRAMES_LOWER_BASE_LINE_COEFFICIENT_A;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    lowerLineCoefA=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_FRAMES_LOWER_BASE_LINE_COEFFICIENT_B;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    lowerLineCoefB=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_FACTOR_TO_TEMPERATURE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dblValue=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    factorToTemperature=dblValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_SEGMENTATION_METHOD;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    segmentationMethod=strValue;
+    if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_SEGMENTATION_METHOD_KMEANS,Qt::CaseInsensitive)==0)
+    {
+        parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_NUMBER_OF_CLUSTERS_FOR_KMEANS;
+        ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+        if(ptrParameter==NULL)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                    .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+            return(false);
+        }
+        ptrParameter->getValue(strValue);
+        strValue=strValue.trimmed();
+        okToNumber=false;
+        intValue=strValue.toInt(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        numberOfClustersForKmeans=intValue;
+    }
+    else if(segmentationMethod.compare(PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_SEGMENTATION_METHOD_PERCENTILE,Qt::CaseInsensitive)==0)
+    {
+        parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_MAXIMUM_VALUE_FOR_PERCENTILE;
+        ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+        if(ptrParameter==NULL)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                    .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+            return(false);
+        }
+        ptrParameter->getValue(strValue);
+        strValue=strValue.trimmed();
+        okToNumber=false;
+        dblValue=strValue.toDouble(&okToNumber);
+        if(!okToNumber)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        maximumValueForPercentile=dblValue;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_DATE_FROM_THERMAL_ORTHOMOSAIC_FILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFromOrthomosaciFile=false;
+    if(strValue.compare("true",Qt::CaseInsensitive)==0)
+    {
+        dateFromOrthomosaciFile=true;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_THERMAL_ORTHOMOSAIC_FILE_TAGS_STRING_SEPARATOR;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFromOrthomosaicFileStringSeparator=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_THERMAL_ORTHOMOSAIC_FILE_TAG_DATE_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToNumber=false;
+    dateTagPositionInOrthomosaicFile=strValue.toDouble(&okToNumber);
+    if(!okToNumber)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_DATE_FORMAT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    dateFormat=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_CWSITHO_TAG_DATE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    str_date=strValue;
+    if(dateFromOrthomosaciFile)
+    {
+        str_date="none";
+    }
+
+    mPythonFiles.clear();
+    QString pythonFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_CWSITHO_PYTHON_FILE;
+    if(!writePythonProgramCropMonitoringFromPhotogrammetricGeomaticProducts(pythonFileName,
+                                                                            strAuxError))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError writting python file:\n%1").arg(strAuxError);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    mPythonFiles.append(pythonFileName);
+
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_CWSITHO_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nHa fallado la eliminación del fichero:\n%1").arg(processFileName);
+            QFile::remove(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nHa fallado la apertura del fichero:\n%1").arg(processFileName);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+
+    /*
+    */
+
+    //    mFilesToRemove.push_back(processFileName);
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
     return(true);
 }
 
