@@ -158,6 +158,7 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_BCVRM);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CMNDVI);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CMGCCVOL);
+    mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CWSITHO);
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
@@ -3202,6 +3203,25 @@ bool PAFyCToolsDialog::process_cmndvi(QString &qgisPath,
     return(true);
 }
 
+bool PAFyCToolsDialog::process_cwsitho(QString &qgisPath,
+                                       QString &outputPath,
+                                       QString &strError)
+{
+    mFilesToRemove.clear();
+    QString command=PAFYCTOOLSGUI_COMMAND_CWSITHO;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,framesShapefile,orthomosaicFile,outputShapefile,parameterCode,str_date;
+    QString strAuxError,dateFormat,dateFromOrthomosaicFileStringSeparator,segmentationMethod;
+    int intValue,dateTagPositionInOrthomosaicFile,numberOfClustersForKmeans;
+    double upperLineCoefA,upperLineCoefB,lowerLineCoefA,lowerLineCoefB;
+    double dblValue,factorToTemperature,minimumValueForPercentile;
+    bool okToNumber,dateFromOrthomosaciFile;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+
+    return(true);
+}
+
 bool PAFyCToolsDialog::removeDir(QString dirName, bool onlyContent)
 {
     bool result = true;
@@ -5174,6 +5194,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL,Qt::CaseInsensitive)==0)
     {
         if(!process_cmgccvol(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_CWSITHO,Qt::CaseInsensitive)==0)
+    {
+        if(!process_cwsitho(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")

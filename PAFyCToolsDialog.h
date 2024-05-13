@@ -66,6 +66,9 @@ private:
     bool process_cmndvi(QString& qgisPath,
                         QString& outputPath,
                         QString& strError);
+    bool process_cwsitho(QString& qgisPath,
+                         QString& outputPath,
+                         QString& strError);
     bool removeDir(QString dirName,
                    bool onlyContent=false);
 
