@@ -3661,7 +3661,7 @@ bool PAFyCToolsDialog::process_cwsitho(QString &qgisPath,
     strOut<<"--upper_line_coef_b "<<QString::number(upperLineCoefB,'f',3)<<" ";
     strOut<<"--lower_line_coef_a "<<QString::number(lowerLineCoefA,'f',6)<<" ";
     strOut<<"--lower_line_coef_b "<<QString::number(lowerLineCoefB,'f',3)<<" ";
-    strOut<<"--factor_to_reflectance "<<QString::number(factorToTemperature,'f',6)<<" ";
+    strOut<<"--factor_to_temperature "<<QString::number(factorToTemperature,'f',6)<<" ";
     strOut<<"--output_shp \""<<outputShapefile<<"\" ";
     strOut<<"--date_from_orthomosaic_file ";
     if(dateFromOrthomosaciFile) strOut<<"1"<<" ";
