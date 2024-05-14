@@ -77,6 +77,8 @@ private:
                                                                                     QString &strError);
     bool writePythonProgramCropMonitoringFromPhotogrammetricGeomaticProducts(QString pythonFileName,
                                                                              QString& strError);
+    bool writePythonProgramCropWaterStressIndexUsingThermalOrthomosaic(QString pythonFileName,
+                                                                       QString& strError);
     Ui::PAFyCToolsDialog *ui;
     QSettings *mPtrSettings;
     QString mBasePath;
