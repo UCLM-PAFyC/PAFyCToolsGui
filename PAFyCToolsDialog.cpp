@@ -159,6 +159,7 @@ bool PAFyCToolsDialog::initialize(QString &strError)
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CMNDVI);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CMGCCVOL);
     mCommands.push_back(PAFYCTOOLSGUI_COMMAND_CWSITHO);
+    mCommands.push_back(PAFYCTOOLSGUI_COMMAND_SZBR);
 //    mCommands.push_back();
     QVector<QString> aux1;
     mSubCommandsByCommand[PAFYCTOOLSGUI_COMMAND_PLPPC]=aux1;
@@ -3699,6 +3700,390 @@ bool PAFyCToolsDialog::process_cwsitho(QString &qgisPath,
     return(true);
 }
 
+bool PAFyCToolsDialog::process_szbr(QString &qgisPath,
+                                    QString &outputPath,
+                                    QString &strError)
+{
+    mFilesToRemove.clear();
+    QString command=PAFYCTOOLSGUI_COMMAND_SZBR;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,parameterCode,inputOrthomosaic,inputShapefile;
+    QString strFactorToReflectance,strBandsToUse,strUseOnlyOnePrincipalComponent;
+    QString strAuxError,dateFormat,dateFromOrthomosaicFileStringSeparator,segmentationMethod;
+    int intValue,noDataValue,redBandPosition,nirBandPosition,maximumNumberOfClustersForKmeans;
+    double upperLineCoefA,upperLineCoefB,lowerLineCoefA,lowerLineCoefB;
+    double dblValue,minimumNdvi,maximumNdvi,minimumExplainedVariance,factorToReflectance;
+    double minimumClassificationArea;
+    bool okToNumber,dateFromOrthomosaciFile;
+    bool okToInt,okToDbl;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_INPUT_ORTHOMOSAIC;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    inputOrthomosaic=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_ORTHOMOSAIC_NO_DATA_VALUE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToInt=false;
+    noDataValue=strValue.toInt(&okToInt);
+    if(!okToInt)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_FACTOR_TO_REFLECTANCE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    factorToReflectance=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    strFactorToReflectance=strValue;
+
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_INPUT_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    inputShapefile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_BANDS_TO_USE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    QStringList strValues=strValue.split(";");
+    if(strValues.size()<1)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a list of integers separated by ;")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    for(int i=0;i<strValues.size();i++)
+    {
+        strValue=strValues.at(i);
+        okToInt=false;
+        int intValue=strValue.toInt(&okToInt);
+        if(!okToInt)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a list of integers separated by ;")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        if(i>0)
+            strBandsToUse+=" ";
+        strBandsToUse+=QString::number(intValue);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_RED_BAND_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToInt=false;
+    redBandPosition=strValue.toInt(&okToInt);
+    if(!okToInt)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_NIR_BAND_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToInt=false;
+    nirBandPosition=strValue.toInt(&okToInt);
+    if(!okToInt)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_SOIL_MINIMUM_NDVI;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    minimumNdvi=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_SOIL_MAXIMUM_NDVI;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    maximumNdvi=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_MINIMUM_EXPLAINED_VARIANCE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    minimumExplainedVariance=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    minimumExplainedVariance=minimumExplainedVariance/100.;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_USE_ONLY_ONE_PRINCIPAL_COMPONENT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+
+    if(strValue.compare("True",Qt::CaseInsensitive)==0)
+        strUseOnlyOnePrincipalComponent="1";
+    else
+        strUseOnlyOnePrincipalComponent="0";
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_MAXIMUM_NUMBER_OF_CLUSTERS_KMEANS;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToInt=false;
+    maximumNumberOfClustersForKmeans=strValue.toInt(&okToInt);
+    if(!okToInt)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_SZBR_MINIMUM_CLASSIFIED_AREA;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    minimumClassificationArea=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    mPythonFiles.clear();
+    QString pythonFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_SZBR_PYTHON_FILE;
+    if(!writePythonProgramSoilZoningBasedInReflectivity(pythonFileName,
+                                                        strAuxError))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError writting python file:\n%1").arg(strAuxError);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    mPythonFiles.append(pythonFileName);
+
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_SZBR_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nHa fallado la eliminación del fichero:\n%1").arg(processFileName);
+            QFile::remove(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nHa fallado la apertura del fichero:\n%1").arg(processFileName);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+
+    /*
+    --input_orthomosaic "D:\PAFyCToolsGui\20240709_SoilZoningBaseReflectivity\OrtoSeleccion_recortada.tif"
+    --no_data_value 65535 --input_rois_shp "D:\PAFyCToolsGui\20240709_SoilZoningBaseReflectivity\Limites_parcela_Hotel.shp"
+    --factor_to_reflectance 3.051757812500000e-05 --bands_to_use 1 2 4 5 6 --red_band_number 4
+    --nir_band_number 6 --minimum_ndvi -1.0 --maximum_ndvi 0.15 --minimum_explained_variance 0.8
+    --only_one_principal_component 1 --max_number_of_kmeans_clusters 5 --minimum_classification_area 5.0
+    */
+    strOut<<"echo off"<<"\n";
+    strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+    strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+    strOut<<"set TOOL="<<pythonFileName<<"\n";
+    strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+    strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+    strOut<<"python %TOOL% ";
+    strOut<<"--input_orthomosaic \""<<inputOrthomosaic<<"\" ";
+    strOut<<"--no_data_value "<<QString::number(noDataValue)<<" ";
+    strOut<<"--input_rois_shp \""<<inputShapefile<<"\" ";
+    strOut<<"--factor_to_reflectance  "<<strFactorToReflectance<<" ";
+    strOut<<"--bands_to_use "<<strBandsToUse<<" ";
+    strOut<<"--red_band_number "<<QString::number(redBandPosition)<<" ";
+    strOut<<"--nir_band_number "<<QString::number(nirBandPosition)<<" ";
+    strOut<<"--minimum_ndvi "<<QString::number(minimumNdvi,'f',2)<<" ";
+    strOut<<"--maximum_ndvi "<<QString::number(maximumNdvi,'f',2)<<" ";
+    strOut<<"--minimum_explained_variance "<<QString::number(minimumExplainedVariance,'f',1)<<" ";
+    strOut<<"--only_one_principal_component "<<strUseOnlyOnePrincipalComponent<<" ";
+    strOut<<"--max_number_of_kmeans_clusters "<<QString::number(maximumNumberOfClustersForKmeans)<<" ";
+    strOut<<"--minimum_classification_area "<<QString::number(minimumClassificationArea,'f',2)<<" ";
+    file.close();
+
+    //    mFilesToRemove.push_back(processFileName);
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+    return(true);
+}
+
 bool PAFyCToolsDialog::removeDir(QString dirName, bool onlyContent)
 {
     bool result = true;
@@ -5856,6 +6241,495 @@ bool PAFyCToolsDialog::writePythonProgramCropWaterStressIndexUsingThermalOrthomo
     return(true);
 }
 
+bool PAFyCToolsDialog::writePythonProgramSoilZoningBasedInReflectivity(QString pythonFileName,
+                                                                       QString &strError)
+{
+    QString command=PAFYCTOOLSGUI_COMMAND_SZBR;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    functionName+=QObject::tr("Writing python file");
+    if(QFile::exists(pythonFileName))
+    {
+        if(!QFile::remove(pythonFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nError removing file:\n%1").arg(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(pythonFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError opening file:\n%1").arg(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+    strOut<<"# authors:"<<"\n";
+    strOut<<"# David Hernandez Lopez, david.hernandez@uclm.es"<<"\n";
+    strOut<<"# Miguel Angel Moreno Hidalgo, miguelangel.moreno@uclm.es"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"# import optparse"<<"\n";
+    strOut<<"import argparse"<<"\n";
+    strOut<<"import numpy as np"<<"\n";
+    strOut<<"from osgeo import gdal, osr, ogr"<<"\n";
+    strOut<<"import os"<<"\n";
+    strOut<<"import json"<<"\n";
+    strOut<<"from urllib.parse import unquote"<<"\n";
+    strOut<<"import shutil"<<"\n";
+    strOut<<"from os.path import exists"<<"\n";
+    strOut<<"import datetime"<<"\n";
+    strOut<<"import glob"<<"\n";
+    strOut<<"from math import floor, ceil, sqrt, isnan, modf, trunc"<<"\n";
+    strOut<<"import csv"<<"\n";
+    strOut<<"import re"<<"\n";
+    strOut<<"import cv2 as cv"<<"\n";
+    strOut<<"import math"<<"\n";
+    strOut<<"from pathlib import Path"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"class GdalErrorHandler(object):"<<"\n";
+    strOut<<"    def __init__(self):"<<"\n";
+    strOut<<"        self.err_level = gdal.CE_None"<<"\n";
+    strOut<<"        self.err_no = 0"<<"\n";
+    strOut<<"        self.err_msg = ''"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"    def handler(self, err_level, err_no, err_msg):"<<"\n";
+    strOut<<"        self.err_level = err_level"<<"\n";
+    strOut<<"        self.err_no = err_no"<<"\n";
+    strOut<<"        self.err_msg = err_msg"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def is_number(n):"<<"\n";
+    strOut<<"    is_number = True"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        num = float(n)"<<"\n";
+    strOut<<"        # check for \"nan\" floats"<<"\n";
+    strOut<<"        is_number = num == num  # or use `math.isnan(num)`"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        is_number = False"<<"\n";
+    strOut<<"    return is_number"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def process(input_orthomosaic,"<<"\n";
+    strOut<<"            input_shp,"<<"\n";
+    strOut<<"            factor_to_reflectance,"<<"\n";
+    strOut<<"            bands_to_use,"<<"\n";
+    strOut<<"            red_band_number,"<<"\n";
+    strOut<<"            nir_band_number,"<<"\n";
+    strOut<<"            minimum_ndvi,"<<"\n";
+    strOut<<"            maximum_ndvi,"<<"\n";
+    strOut<<"            minimum_explained_variance,"<<"\n";
+    strOut<<"            only_one_principal_component,"<<"\n";
+    strOut<<"            max_number_of_kmeans_clusters,"<<"\n";
+    strOut<<"            minimum_classification_area):"<<"\n";
+    strOut<<"    str_error = None"<<"\n";
+    strOut<<"    if input_shp:"<<"\n";
+    strOut<<"        if not exists(input_shp):"<<"\n";
+    strOut<<"            str_error = \"Function process\""<<"\n";
+    strOut<<"            str_error += \"\\nNot exists file: {}\".format(input_shp)"<<"\n";
+    strOut<<"            return str_error"<<"\n";
+    strOut<<"    if not exists(input_orthomosaic):"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_orthomosaic)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    orthomosaic_ds = None"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        orthomosaic_ds = gdal.Open(input_orthomosaic)"<<"\n";
+    strOut<<"    except ValueError:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nError opening dataset file:\\n{}\".format(input_orthomosaic)"<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    orthomosaic_number_of_bands = orthomosaic_ds.RasterCount"<<"\n";
+    strOut<<"    if red_band_number > orthomosaic_number_of_bands:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nRed band number is greather than orthomosaic number of bands\""<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    if nir_band_number > orthomosaic_number_of_bands:"<<"\n";
+    strOut<<"        str_error = \"Function process\""<<"\n";
+    strOut<<"        str_error += \"\\nNir band number is greather than orthomosaic number of bands\""<<"\n";
+    strOut<<"        return str_error"<<"\n";
+    strOut<<"    for band_number in bands_to_use:"<<"\n";
+    strOut<<"        if band_number > orthomosaic_number_of_bands or band_number < 1:"<<"\n";
+    strOut<<"            str_error = \"Function process\""<<"\n";
+    strOut<<"            str_error += (\"\\nBand to use number: {} is out of valid number for orthomosaic number of bands\""<<"\n";
+    strOut<<"                          .format(str(band_number)))"<<"\n";
+    strOut<<"            return str_error"<<"\n";
+    strOut<<"    xSize = orthomosaic_ds.RasterXSize"<<"\n";
+    strOut<<"    ySize = orthomosaic_ds.RasterYSize"<<"\n";
+    strOut<<"    orthomosaic_geotransform = orthomosaic_ds.GetGeoTransform()"<<"\n";
+    strOut<<"    gsd_x = abs(orthomosaic_geotransform[1])"<<"\n";
+    strOut<<"    gsd_y = abs(orthomosaic_geotransform[5])"<<"\n";
+    strOut<<"    gsd = gsd_x"<<"\n";
+    strOut<<"    median_filter_number_of_pixels = ceil(minimum_classification_area / gsd)"<<"\n";
+    strOut<<"    if median_filter_number_of_pixels % 2 == 0:"<<"\n";
+    strOut<<"        median_filter_number_of_pixels = median_filter_number_of_pixels + 1"<<"\n";
+    strOut<<"    median_filter_position = round((median_filter_number_of_pixels ** 2 + 1) / 2)"<<"\n";
+    strOut<<"    projection = orthomosaic_ds.GetProjection()"<<"\n";
+    strOut<<"    orthomosaic_crs = osr.SpatialReference()"<<"\n";
+    strOut<<"    orthomosaic_crs.ImportFromWkt(orthomosaic_ds.GetProjectionRef())"<<"\n";
+    strOut<<"    orthomosaic_crs_wkt = orthomosaic_crs.ExportToWkt()"<<"\n";
+    strOut<<"    ulx, xres, xskew, uly, yskew, yres = orthomosaic_ds.GetGeoTransform()"<<"\n";
+    strOut<<"    lrx = ulx + (orthomosaic_ds.RasterXSize * xres)"<<"\n";
+    strOut<<"    lry = uly + (orthomosaic_ds.RasterYSize * yres)"<<"\n";
+    strOut<<"    out_ring = ogr.Geometry(ogr.wkbLinearRing)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, uly)"<<"\n";
+    strOut<<"    out_ring.AddPoint(lrx, uly)"<<"\n";
+    strOut<<"    out_ring.AddPoint(lrx, lry)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, lry)"<<"\n";
+    strOut<<"    out_ring.AddPoint(ulx, uly)"<<"\n";
+    strOut<<"    orthomosaic_poly = ogr.Geometry(ogr.wkbPolygon)"<<"\n";
+    strOut<<"    orthomosaic_poly.AddGeometry(out_ring)"<<"\n";
+    strOut<<"    rs_pixel_width = orthomosaic_geotransform[1]"<<"\n";
+    strOut<<"    rs_pixel_height = orthomosaic_geotransform[5]"<<"\n";
+    strOut<<"    orthomosaic_pixel_area = abs(rs_pixel_width) * abs(rs_pixel_height)"<<"\n";
+    strOut<<"    orthomosaic_x_origin = orthomosaic_geotransform[0]"<<"\n";
+    strOut<<"    orthomosaic_y_origin = orthomosaic_geotransform[3]"<<"\n";
+    strOut<<"    orthomosaic_pixel_width = orthomosaic_geotransform[1]"<<"\n";
+    strOut<<"    orthomosaic_pixel_height = orthomosaic_geotransform[5]"<<"\n";
+    strOut<<"    values_by_band = {}"<<"\n";
+    strOut<<"    band_red = orthomosaic_ds.GetRasterBand(red_band_number)"<<"\n";
+    strOut<<"    band_red_no_data_value = band_red.GetNoDataValue()"<<"\n";
+    strOut<<"    band_red_data = band_red.ReadAsArray()"<<"\n";
+    strOut<<"    band_redmasked_data = np.ma.masked_where(band_red_data == band_red_no_data_value, band_red_data)"<<"\n";
+    strOut<<"    band_redindexes_without_no_data_value = band_redmasked_data.nonzero()"<<"\n";
+    strOut<<"    columns_by_row = {}"<<"\n";
+    strOut<<"    for i in range(len(band_redindexes_without_no_data_value[0])):"<<"\n";
+    strOut<<"        row = band_redindexes_without_no_data_value[0][i]"<<"\n";
+    strOut<<"        column = band_redindexes_without_no_data_value[1][i]"<<"\n";
+    strOut<<"        if not row in columns_by_row:"<<"\n";
+    strOut<<"            columns_by_row[row] = []"<<"\n";
+    strOut<<"        columns_by_row[row].append(column)"<<"\n";
+    strOut<<"    band_redmasked_data = None"<<"\n";
+    strOut<<"    band_redindexes_without_no_data_value = None"<<"\n";
+    strOut<<"    band_nir = orthomosaic_ds.GetRasterBand(nir_band_number)"<<"\n";
+    strOut<<"    band_nir_no_data_value = band_nir.GetNoDataValue()"<<"\n";
+    strOut<<"    band_nir_data = band_nir.ReadAsArray()"<<"\n";
+    strOut<<"    valid_indexes = []"<<"\n";
+    strOut<<"    invalid_indexes = []"<<"\n";
+    strOut<<"    print('Filtering by NDVI value ...', flush=True)"<<"\n";
+    strOut<<"    for row in columns_by_row:"<<"\n";
+    strOut<<"        for j in range(len(columns_by_row[row])):"<<"\n";
+    strOut<<"            column = columns_by_row[row][j]"<<"\n";
+    strOut<<"            red_value = band_red_data[row][column] * factor_to_reflectance"<<"\n";
+    strOut<<"            nir_value = band_nir_data[row][column] * factor_to_reflectance"<<"\n";
+    strOut<<"            ndvi_value = (nir_value - red_value) / (nir_value + red_value)"<<"\n";
+    strOut<<"            index = [row, column]"<<"\n";
+    strOut<<"            if ndvi_value >= minimum_ndvi and ndvi_value <= maximum_ndvi:"<<"\n";
+    strOut<<"                valid_indexes.append(index)"<<"\n";
+    strOut<<"            else:"<<"\n";
+    strOut<<"                invalid_indexes.append(index)"<<"\n";
+    strOut<<"    print('   ... Process finished', flush=True)"<<"\n";
+    strOut<<"    data = np.zeros((len(valid_indexes), len(bands_to_use)))"<<"\n";
+    strOut<<"    invalid_positions_in_valid_indexes = []"<<"\n";
+    strOut<<"    for j in range(len(bands_to_use)):"<<"\n";
+    strOut<<"        band_number = bands_to_use[j]"<<"\n";
+    strOut<<"        print('Getting data for band {} ...'.format(band_number), flush=True)"<<"\n";
+    strOut<<"        band_data = None"<<"\n";
+    strOut<<"        band_no_data_value = None"<<"\n";
+    strOut<<"        if band_number == red_band_number:"<<"\n";
+    strOut<<"            band_data = band_red_data"<<"\n";
+    strOut<<"            band_no_data_value = band_red_no_data_value"<<"\n";
+    strOut<<"        elif band_number == nir_band_number:"<<"\n";
+    strOut<<"            band_data = band_nir_data"<<"\n";
+    strOut<<"            band_no_data_value = band_nir_no_data_value"<<"\n";
+    strOut<<"        else:"<<"\n";
+    strOut<<"            band = orthomosaic_ds.GetRasterBand(band_number)"<<"\n";
+    strOut<<"            band_no_data_value = band.GetNoDataValue()"<<"\n";
+    strOut<<"            band_data = band.ReadAsArray()  # rows, columns"<<"\n";
+    strOut<<"        for i in range(len(valid_indexes)):"<<"\n";
+    strOut<<"            if i in invalid_positions_in_valid_indexes:"<<"\n";
+    strOut<<"                continue"<<"\n";
+    strOut<<"            row = valid_indexes[i][0]"<<"\n";
+    strOut<<"            column = valid_indexes[i][1]"<<"\n";
+    strOut<<"            value = band_data[row][column]"<<"\n";
+    strOut<<"            if value == band_no_data_value:"<<"\n";
+    strOut<<"                index = [row, column]"<<"\n";
+    strOut<<"                invalid_positions_in_valid_indexes.append(i)"<<"\n";
+    strOut<<"            data[i][j] = value * factor_to_reflectance"<<"\n";
+    strOut<<"        print('   ... Process finished', flush=True)"<<"\n";
+    strOut<<"    band_red_data = None"<<"\n";
+    strOut<<"    band_nir_data = None"<<"\n";
+    strOut<<"    if len(invalid_positions_in_valid_indexes) > 0:"<<"\n";
+    strOut<<"        print('Removing pixels with no data value in some band ...', flush=True)"<<"\n";
+    strOut<<"        valid_indexes_with_out_outliers = []"<<"\n";
+    strOut<<"        data_without_outliers = np.zeros((len(valid_indexes) - len(invalid_positions_in_valid_indexes),"<<"\n";
+    strOut<<"                                          len(bands_to_use)))"<<"\n";
+    strOut<<"        pos = -1"<<"\n";
+    strOut<<"        for i in range(len(valid_indexes)):"<<"\n";
+    strOut<<"            if i in invalid_positions_in_valid_indexes:"<<"\n";
+    strOut<<"                continue"<<"\n";
+    strOut<<"            pos = pos + 1"<<"\n";
+    strOut<<"            row = valid_indexes[i][0]"<<"\n";
+    strOut<<"            column = valid_indexes[i][1]"<<"\n";
+    strOut<<"            for j in range(len(bands_to_use)):"<<"\n";
+    strOut<<"                data_without_outliers[pos][j] = data[i][j]"<<"\n";
+    strOut<<"            index = [row, column]"<<"\n";
+    strOut<<"            valid_indexes_with_out_outliers.append(index)"<<"\n";
+    strOut<<"        data = None"<<"\n";
+    strOut<<"        valid_indexes = None"<<"\n";
+    strOut<<"        data = data_without_outliers"<<"\n";
+    strOut<<"        valid_indexes = valid_indexes_with_out_outliers"<<"\n";
+    strOut<<"        data_without_outliers = None"<<"\n";
+    strOut<<"        valid_indexes_with_out_outliers = None"<<"\n";
+    strOut<<"        print('   ... Process finished', flush=True)"<<"\n";
+    strOut<<"    print('Computing principal components and transforming data values to new base ...', flush=True)"<<"\n";
+    strOut<<"    standardized_data = (data - data.mean(axis=0)) / data.std(axis=0)"<<"\n";
+    strOut<<"    data = None"<<"\n";
+    strOut<<"    covariance_matrix = np.cov(standardized_data, ddof=1, rowvar=False)"<<"\n";
+    strOut<<"    eigenvalues, eigenvectors = np.linalg.eig(covariance_matrix)"<<"\n";
+    strOut<<"    # np.argsort can only provide lowest to highest; use [::-1] to reverse the list"<<"\n";
+    strOut<<"    order_of_importance = np.argsort(eigenvalues)[::-1]"<<"\n";
+    strOut<<"    # utilize the sort order to sort eigenvalues and eigenvectors"<<"\n";
+    strOut<<"    sorted_eigenvalues = eigenvalues[order_of_importance]"<<"\n";
+    strOut<<"    sorted_eigenvectors = eigenvectors[:, order_of_importance]  # sort the columns"<<"\n";
+    strOut<<"    # use sorted_eigenvalues to ensure the explained variances correspond to the eigenvectors"<<"\n";
+    strOut<<"    explained_variance = sorted_eigenvalues / np.sum(sorted_eigenvalues)"<<"\n";
+    strOut<<"    explained_variance_by_selected_components = 0"<<"\n";
+    strOut<<"    number_of_pca_components = 0"<<"\n";
+    strOut<<"    while explained_variance_by_selected_components < minimum_explained_variance:"<<"\n";
+    strOut<<"        explained_variance_by_selected_components = (explained_variance_by_selected_components"<<"\n";
+    strOut<<"                                                     + explained_variance[number_of_pca_components])"<<"\n";
+    strOut<<"        number_of_pca_components = number_of_pca_components + 1"<<"\n";
+    strOut<<"    if number_of_pca_components > 1 and only_one_principal_component:"<<"\n";
+    strOut<<"        number_of_pca_components = 1"<<"\n";
+    strOut<<"    reduced_data = np.matmul(standardized_data,"<<"\n";
+    strOut<<"                             sorted_eigenvectors[:, :number_of_pca_components])  # transform the original data"<<"\n";
+    strOut<<"    standardized_data = None"<<"\n";
+    strOut<<"    criteria = (cv.TERM_CRITERIA_MAX_ITER, 100, 1.0)"<<"\n";
+    strOut<<"    flags = cv.KMEANS_RANDOM_CENTERS"<<"\n";
+    strOut<<"    input_values_cv = np.zeros([len(valid_indexes), number_of_pca_components], dtype=np.float32)"<<"\n";
+    strOut<<"    for i in range(len(valid_indexes)):"<<"\n";
+    strOut<<"        for j in range(number_of_pca_components):"<<"\n";
+    strOut<<"            input_values_cv[i][j] = reduced_data[i][j]"<<"\n";
+    strOut<<"    print('   ... Process finished', flush=True)"<<"\n";
+    strOut<<"    mse = {}"<<"\n";
+    strOut<<"    fileformat = \"GTiff\""<<"\n";
+    strOut<<"    driver = gdal.GetDriverByName(fileformat)"<<"\n";
+    strOut<<"    output_path = os.path.dirname(os.path.abspath(input_orthomosaic))"<<"\n";
+    strOut<<"    var_path = Path(input_orthomosaic)"<<"\n";
+    strOut<<"    base_name = var_path.stem"<<"\n";
+    strOut<<"    file_ext = '.tif'"<<"\n";
+    strOut<<"    for kmeans_clusters in range(1, max_number_of_kmeans_clusters + 1):"<<"\n";
+    strOut<<"        print('Computing results for {} clusters ...'.format(str(kmeans_clusters)), flush=True)"<<"\n";
+    strOut<<"        compactness, labels, centers = cv.kmeans(input_values_cv, kmeans_clusters,"<<"\n";
+    strOut<<"                                                 None, criteria, 10, flags)"<<"\n";
+    strOut<<"        mse[kmeans_clusters] = compactness / len(valid_indexes)"<<"\n";
+    strOut<<"        str_mse = str(round(mse[kmeans_clusters] * 100))"<<"\n";
+    strOut<<"        dst_filename = (output_path + '/' + base_name + '_' + 'npc_'"<<"\n";
+    strOut<<"                        + str(number_of_pca_components) + '_nckms_' + str(kmeans_clusters)"<<"\n";
+    strOut<<"                        + '_mse_' + str_mse + file_ext)"<<"\n";
+    strOut<<"        dst_filename = os.path.normpath(dst_filename)"<<"\n";
+    strOut<<"        dst_ds = driver.Create(dst_filename, xsize=xSize, ysize=ySize, bands=1, eType=gdal.GDT_Byte)"<<"\n";
+    strOut<<"        dst_ds.SetGeoTransform(orthomosaic_geotransform)"<<"\n";
+    strOut<<"        dst_ds.SetProjection(projection)"<<"\n";
+    strOut<<"        # np_raster = np.zeros((ySize, xSize), dtype=np.uint8)"<<"\n";
+    strOut<<"        np_raster = np.full((ySize, xSize), 0, dtype=np.uint8)"<<"\n";
+    strOut<<"        for i in range(len(valid_indexes)):"<<"\n";
+    strOut<<"            row = valid_indexes[i][0]"<<"\n";
+    strOut<<"            column = valid_indexes[i][1]"<<"\n";
+    strOut<<"            np_raster[row][column] = labels[i] + 1"<<"\n";
+    strOut<<"        np_raster = cv.medianBlur(np_raster, median_filter_number_of_pixels)"<<"\n";
+    strOut<<"        for i in range(len(invalid_indexes)):"<<"\n";
+    strOut<<"            row = invalid_indexes[i][0]"<<"\n";
+    strOut<<"            column = invalid_indexes[i][1]"<<"\n";
+    strOut<<"            np_raster[row][column] = 0"<<"\n";
+    strOut<<"        dst_ds.GetRasterBand(1).SetNoDataValue(0)"<<"\n";
+    strOut<<"        dst_ds.GetRasterBand(1).WriteArray(np_raster)"<<"\n";
+    strOut<<"        dst_ds = None"<<"\n";
+    strOut<<"        print('   ... Process finished', flush=True)"<<"\n";
+    strOut<<"    return str_error"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def clip_raster(input_raster,"<<"\n";
+    strOut<<"                input_shp,"<<"\n";
+    strOut<<"                no_data_value):"<<"\n";
+    strOut<<"    str_error = None"<<"\n";
+    strOut<<"    output_raster_suffix = ''"<<"\n";
+    strOut<<"    output_raster = os.path.splitext(input_raster)[0]"<<"\n";
+    strOut<<"    output_raster = output_raster + \"_rois\""<<"\n";
+    strOut<<"    output_raster = output_raster + os.path.splitext(input_raster)[1]"<<"\n";
+    strOut<<"    if not exists(input_shp):"<<"\n";
+    strOut<<"        str_error = \"Function clip_raster\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_shp)"<<"\n";
+    strOut<<"        return str_error, output_raster"<<"\n";
+    strOut<<"    if not exists(input_raster):"<<"\n";
+    strOut<<"        str_error = \"Function clip_raster\""<<"\n";
+    strOut<<"        str_error += \"\\nNot exists file: {}\".format(input_raster)"<<"\n";
+    strOut<<"        return str_error, output_raster"<<"\n";
+    strOut<<"    output_raster_suffix = ''"<<"\n";
+    strOut<<"    output_raster = os.path.splitext(input_raster)[0]"<<"\n";
+    strOut<<"    output_raster = output_raster + \"_rois\""<<"\n";
+    strOut<<"    output_raster = output_raster + os.path.splitext(input_raster)[1]"<<"\n";
+    strOut<<"    # return str_error, output_raster"<<"\n";
+    strOut<<"    if exists(output_raster):"<<"\n";
+    strOut<<"        try:"<<"\n";
+    strOut<<"            os.remove(output_raster)"<<"\n";
+    strOut<<"        except FileNotFoundError as e:"<<"\n";
+    strOut<<"            str_error = (\"Removing output raster:\\n{}\".format(output_raster))"<<"\n";
+    strOut<<"            str_error = str_error + (\"\\nError\t\" + e.strerror)"<<"\n";
+    strOut<<"            return str_error, output_raster"<<"\n";
+    strOut<<"        except OSError as e:"<<"\n";
+    strOut<<"            str_error = (\"Removing output raster:\\n{}\".format(output_raster))"<<"\n";
+    strOut<<"            str_error = str_error + (\"\\nError\t\" + e.strerror)"<<"\n";
+    strOut<<"            return str_error, output_raster"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        input_raster_ds = gdal.Open(input_raster)"<<"\n";
+    strOut<<"    except Exception as e:"<<"\n";
+    strOut<<"        assert err.err_level == gdal.CE_Failure, ("<<"\n";
+    strOut<<"                'The handler error level should now be at failure')"<<"\n";
+    strOut<<"        assert err.err_msg == e.args[0], 'raised exception should contain the message'"<<"\n";
+    strOut<<"        str_error = \"Function clip_raster\""<<"\n";
+    strOut<<"        str_error = ('Handled warning: level={}, no={}, msg={}'.format("<<"\n";
+    strOut<<"                err.err_level, err.err_no, err.err_msg))"<<"\n";
+    strOut<<"        return str_error, output_raster"<<"\n";
+    strOut<<"    raster_no_data_value = input_raster_ds.GetRasterBand(1).GetNoDataValue()"<<"\n";
+    strOut<<"    if not raster_no_data_value:"<<"\n";
+    strOut<<"        datatype = gdal.GetDataTypeName(input_raster_ds.GetRasterBand(1).DataType)"<<"\n";
+    strOut<<"        raster_no_data_value = no_data_value"<<"\n";
+    strOut<<"    orthomosaic_geotransform = input_raster_ds.GetGeoTransform()"<<"\n";
+    strOut<<"    gsd_x = abs(orthomosaic_geotransform[1])"<<"\n";
+    strOut<<"    gsd_y = abs(orthomosaic_geotransform[5])"<<"\n";
+    strOut<<"    gdalwarp_str_options = \" -cutline \" + input_shp"<<"\n";
+    strOut<<"    gdalwarp_str_options += \" -crop_to_cutline -dstnodata \" + str(no_data_value)"<<"\n";
+    strOut<<"    gdalwarp_str_options += \" -tr \""<<"\n";
+    strOut<<"    gdalwarp_str_options += \"{:.12f}\".format(gsd_x)"<<"\n";
+    strOut<<"    gdalwarp_str_options += \" \""<<"\n";
+    strOut<<"    gdalwarp_str_options += \"{:.12f}\".format(gsd_y)"<<"\n";
+    strOut<<"    gdalwarp_str_options += \" -co COMPRESS=LZW\""<<"\n";
+    strOut<<"    print('Clipping raster ...', flush=True)"<<"\n";
+    strOut<<"    try:"<<"\n";
+    strOut<<"        output_raster_ds = gdal.Warp(output_raster, input_raster_ds, options = gdalwarp_str_options)"<<"\n";
+    strOut<<"    except Exception as e:"<<"\n";
+    strOut<<"        assert err.err_level == gdal.CE_Failure, ("<<"\n";
+    strOut<<"                'The handler error level should now be at failure')"<<"\n";
+    strOut<<"        assert err.err_msg == e.args[0], 'raised exception should contain the message'"<<"\n";
+    strOut<<"        str_error = \"Function clip_raster\""<<"\n";
+    strOut<<"        str_error = ('Handled warning: level={}, no={}, msg={}'.format("<<"\n";
+    strOut<<"                err.err_level, err.err_no, err.err_msg))"<<"\n";
+    strOut<<"        return str_error, output_raster"<<"\n";
+    strOut<<"    print('   ... Process finished', flush=True)"<<"\n";
+    strOut<<"    return str_error, output_raster"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"def main():"<<"\n";
+    strOut<<"    parser = argparse.ArgumentParser()"<<"\n";
+    strOut<<"    parser.add_argument(\"--input_orthomosaic\", help=\"Input orthomosaic\", type=str)"<<"\n";
+    strOut<<"    parser.add_argument(\"--no_data_value\", type=int,"<<"\n";
+    strOut<<"                        help=\"Raster no data value, if not defined in file\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--input_rois_shp\", help=\"Input input rois shapefile, if exists\", type=str)"<<"\n";
+    strOut<<"    parser.add_argument(\"--factor_to_reflectance\", type=float,"<<"\n";
+    strOut<<"                        help=\"Multiplicative factor for convert raster values to reflectance\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--bands_to_use\", nargs=\"+\", type=int, help=\"Bands to use, starting 1\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--red_band_number\", type=int, help=\"Red band number, starting 1\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--nir_band_number\", type=int, help=\"Nir band number, starting 1\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--minimum_ndvi\", type=float, help=\"Minimmum NDVI, in range [-1,-1]\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--maximum_ndvi\", type=float, help=\"Minimmum NDVI, in range [-1,-1]\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--minimum_explained_variance\", type=float,"<<"\n";
+    strOut<<"                        help=\"Minimmum explained variance by PCA components, in range [0,1]\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--only_one_principal_component\", type=int,"<<"\n";
+    strOut<<"                        help=\"Use only one principal compponent. Not if compute from explained variance\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--max_number_of_kmeans_clusters\", type=int,"<<"\n";
+    strOut<<"                        help=\"Maximum number of clusters in Kmeans classification process\")"<<"\n";
+    strOut<<"    parser.add_argument(\"--minimum_classification_area\", type=float,"<<"\n";
+    strOut<<"                        help=\"Minimum classification area, in meters\")"<<"\n";
+    strOut<<"    args = parser.parse_args()"<<"\n";
+    strOut<<"    if not args.input_orthomosaic:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    input_orthomosaic = args.input_orthomosaic"<<"\n";
+    strOut<<"    if not exists(input_orthomosaic):"<<"\n";
+    strOut<<"        print(\"Error:\\nInput orthomosaic does not exists:\\n{}\".format(input_orthomosaic))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    if not args.no_data_value:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"    no_data_value = args.no_data_value"<<"\n";
+    strOut<<"    input_rois_shp = None"<<"\n";
+    strOut<<"    if args.input_rois_shp:"<<"\n";
+    strOut<<"        input_rois_shp = args.input_rois_shp"<<"\n";
+    strOut<<"        if input_rois_shp:"<<"\n";
+    strOut<<"            if not exists(input_rois_shp):"<<"\n";
+    strOut<<"                print(\"Error:\\nInput ROIs shapefile does not exists:\\n{}\".format(input_rois_shp))"<<"\n";
+    strOut<<"                return"<<"\n";
+    strOut<<"    if not args.factor_to_reflectance:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"    factor_to_reflectance = args.factor_to_reflectance"<<"\n";
+    strOut<<"    if not args.bands_to_use:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    bands_to_use = args.bands_to_use"<<"\n";
+    strOut<<"    if not args.red_band_number:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    red_band_number = args.red_band_number"<<"\n";
+    strOut<<"    if not args.nir_band_number:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    nir_band_number = args.nir_band_number"<<"\n";
+    strOut<<"    if not args.minimum_ndvi:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    minimum_ndvi = args.minimum_ndvi"<<"\n";
+    strOut<<"    if not args.maximum_ndvi:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    maximum_ndvi = args.maximum_ndvi"<<"\n";
+    strOut<<"    if not args.minimum_explained_variance:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    minimum_explained_variance = args.minimum_explained_variance"<<"\n";
+    strOut<<"    if not args.max_number_of_kmeans_clusters:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    if not args.only_one_principal_component:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    int_only_one_principal_component = args.only_one_principal_component"<<"\n";
+    strOut<<"    if int_only_one_principal_component < 0 or args.only_one_principal_component > 1:"<<"\n";
+    strOut<<"        print(\"Error:\\nParameter only_one_principal_component must be 0 or 1\")"<<"\n";
+    strOut<<"    only_one_principal_component = False"<<"\n";
+    strOut<<"    if int_only_one_principal_component == 1:"<<"\n";
+    strOut<<"        only_one_principal_component = True"<<"\n";
+    strOut<<"    max_number_of_kmeans_clusters = args.max_number_of_kmeans_clusters"<<"\n";
+    strOut<<"    if not args.minimum_classification_area:"<<"\n";
+    strOut<<"        parser.print_help()"<<"\n";
+    strOut<<"    minimum_classification_area = args.minimum_classification_area"<<"\n";
+    strOut<<"    if input_rois_shp:"<<"\n";
+    strOut<<"        str_error, input_orthomosaic_rois = clip_raster(input_orthomosaic,"<<"\n";
+    strOut<<"                                                        input_rois_shp,"<<"\n";
+    strOut<<"                                                        no_data_value)"<<"\n";
+    strOut<<"        if str_error:"<<"\n";
+    strOut<<"            print(\"Error:\\n{}\".format(str_error))"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        input_orthomosaic = input_orthomosaic_rois"<<"\n";
+    strOut<<"        input_rois_shp = None"<<"\n";
+    strOut<<"    str_error = process(input_orthomosaic,"<<"\n";
+    strOut<<"                        input_rois_shp,"<<"\n";
+    strOut<<"                        factor_to_reflectance,"<<"\n";
+    strOut<<"                        bands_to_use,"<<"\n";
+    strOut<<"                        red_band_number,"<<"\n";
+    strOut<<"                        nir_band_number,"<<"\n";
+    strOut<<"                        minimum_ndvi,"<<"\n";
+    strOut<<"                        maximum_ndvi,"<<"\n";
+    strOut<<"                        minimum_explained_variance,"<<"\n";
+    strOut<<"                        only_one_principal_component,"<<"\n";
+    strOut<<"                        max_number_of_kmeans_clusters,"<<"\n";
+    strOut<<"                        minimum_classification_area)"<<"\n";
+    strOut<<"    if str_error:"<<"\n";
+    strOut<<"        print(\"Error:\\n{}\".format(str_error))"<<"\n";
+    strOut<<"        return"<<"\n";
+    strOut<<"    print(\"... Process finished\", flush=True)"<<"\n";
+    strOut<<""<<"\n";
+    strOut<<""<<"\n";
+    strOut<<"if __name__ == '__main__':"<<"\n";
+    strOut<<"    err = GdalErrorHandler()"<<"\n";
+    strOut<<"    gdal.PushErrorHandler(err.handler)"<<"\n";
+    strOut<<"    gdal.UseExceptions()  # Exceptions will get raised on anything >= gdal.CE_Failure"<<"\n";
+    strOut<<"    assert err.err_level == gdal.CE_None, 'the error level starts at 0'"<<"\n";
+    strOut<<"    main()"<<"\n";
+    file.close();
+    return(true);
+}
+
 void PAFyCToolsDialog::on_qgisPathPushButton_clicked()
 {
     QString functionName="on_qgisPathPushButton_clicked";
@@ -6363,6 +7237,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_CWSITHO,Qt::CaseInsensitive)==0)
     {
         if(!process_cwsitho(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_SZBR,Qt::CaseInsensitive)==0)
+    {
+        if(!process_szbr(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")

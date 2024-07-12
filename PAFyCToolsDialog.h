@@ -69,6 +69,9 @@ private:
     bool process_cwsitho(QString& qgisPath,
                          QString& outputPath,
                          QString& strError);
+    bool process_szbr(QString& qgisPath,
+                         QString& outputPath,
+                         QString& strError);
     bool removeDir(QString dirName,
                    bool onlyContent=false);
 
@@ -79,6 +82,8 @@ private:
                                                                              QString& strError);
     bool writePythonProgramCropWaterStressIndexUsingThermalOrthomosaic(QString pythonFileName,
                                                                        QString& strError);
+    bool writePythonProgramSoilZoningBasedInReflectivity(QString pythonFileName,
+                                                         QString &strError);
     Ui::PAFyCToolsDialog *ui;
     QSettings *mPtrSettings;
     QString mBasePath;
