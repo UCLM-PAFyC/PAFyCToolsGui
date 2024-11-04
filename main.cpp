@@ -9,7 +9,7 @@
 #define IPYPROJECT_DATE_FORMAT               "yyyy:MM:dd"
 
 #define IPYPROJECT_LICENSE_INITIAL_DATE      "2016:01:01"
-#define IPYPROJECT_LICENSE_FINAL_DATE        "2030:01:31"
+#define IPYPROJECT_LICENSE_FINAL_DATE        "2025:06:30"
 
 #include <ILicenseManager.h>
 void initialize(bool &isInitialized,
@@ -40,8 +40,8 @@ void initialize(bool &isInitialized,
 {
     QDate initialLicenseDate=QDate::fromString(IPYPROJECT_LICENSE_INITIAL_DATE,IPYPROJECT_DATE_FORMAT);
     QDate finalLicenseDate=QDate::fromString(IPYPROJECT_LICENSE_FINAL_DATE,IPYPROJECT_DATE_FORMAT);
-    bool checkKey=false;
-    bool checkDate=false;
+    bool checkKey=true;
+    bool checkDate=true;
     isInitialized=true;
     if(checkKey||checkDate)
     {
