@@ -5016,6 +5016,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"    cont_feature = 0"<<"\n";
     strOut<<"    input_values = []"<<"\n";
     strOut<<"    position_in_input_values_by_feature_position = {}"<<"\n";
+
     strOut<<"    output_field_name = str_date"<<"\n";
     strOut<<"    output_field_name = output_field_name + '_' + 'dn'"<<"\n";
     strOut<<"    if kmeans_clusters > -1:"<<"\n";
@@ -5025,6 +5026,15 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"    output_field_id_index = in_layer_definition.GetFieldIndex(output_field_name)"<<"\n";
     strOut<<"    if output_field_id_index == -1:"<<"\n";
     strOut<<"        in_layer.CreateField(ogr.FieldDefn(output_field_name, ogr.OFTInteger))#ogr.OFTReal))"<<"\n";
+    strOut<<"    output_field_ndvi_name = str_date"<<"\n";
+    strOut<<"    output_field_ndvi_name = output_field_ndvi_name + '_' + 'ni'"<<"\n";
+    strOut<<"    if kmeans_clusters > -1:"<<"\n";
+    strOut<<"        output_field_ndvi_name = output_field_ndvi_name + 'k'"<<"\n";
+    strOut<<"    else:"<<"\n";
+    strOut<<"        output_field_ndvi_name = output_field_ndvi_name + 'p'"<<"\n";
+    strOut<<"    output_field_ndvi_id_index = in_layer_definition.GetFieldIndex(output_field_ndvi_name)"<<"\n";
+    strOut<<"    if output_field_ndvi_id_index == -1:"<<"\n";
+    strOut<<"        in_layer.CreateField(ogr.FieldDefn(output_field_ndvi_name, ogr.OFTReal))"<<"\n";
     strOut<<"    for feature in in_layer:"<<"\n";
     strOut<<"        print('Processing plant: {}, of {}'.format(str(cont_feature + 1),"<<"\n";
     strOut<<"                                                   str(number_of_features)))"<<"\n";
@@ -5192,6 +5202,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"        cont_feature = 0"<<"\n";
     strOut<<"        for feature in in_layer:"<<"\n";
     strOut<<"            damaged = 0"<<"\n";
+    strOut<<"            ndvi = -1"<<"\n";
     strOut<<"            if not cont_feature in position_in_input_values_by_feature_position:"<<"\n";
     strOut<<"                damaged = -1"<<"\n";
     strOut<<"            else:"<<"\n";
@@ -5199,8 +5210,10 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"                pos_center = labels[position_in_input_values_by_feature_position[cont_feature]][0]"<<"\n";
     strOut<<"                if pos_center == pos_center_min_value:"<<"\n";
     strOut<<"                    damaged = 1"<<"\n";
+    strOut<<"                ndvi = input_values[position_in_input_values_by_feature_position[cont_feature]]['value']"<<"\n";
     strOut<<"            cont_feature = cont_feature + 1"<<"\n";
     strOut<<"            feature.SetField(output_field_name, damaged)"<<"\n";
+    strOut<<"            feature.SetField(output_field_ndvi_name, ndvi)"<<"\n";
     strOut<<"            in_layer.SetFeature(feature)"<<"\n";
     strOut<<"    else:"<<"\n";
     strOut<<"        input_values.sort(key=sortFunction)"<<"\n";
@@ -5216,14 +5229,17 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"        cont_feature = 0"<<"\n";
     strOut<<"        for feature in in_layer:"<<"\n";
     strOut<<"            damaged = 0"<<"\n";
+    strOut<<"            ndvi = -1"<<"\n";
     strOut<<"            if not cont_feature in position_in_input_values_by_feature_position:"<<"\n";
     strOut<<"                damaged = -1"<<"\n";
     strOut<<"            else:"<<"\n";
     strOut<<"                if cont_feature in damage_positions:"<<"\n";
     strOut<<"                    damaged = 1"<<"\n";
+    strOut<<"                ndvi = input_values[position_in_input_values_by_feature_position[cont_feature]]['value']"<<"\n";
     strOut<<"            cont_feature = cont_feature + 1"<<"\n";
     strOut<<"            feature.SetField(output_field_name, damaged)"<<"\n";
     strOut<<"            in_layer.SetFeature(feature)"<<"\n";
+    strOut<<"            feature.SetField(output_field_ndvi_name, ndvi)"<<"\n";
     strOut<<"    in_vec_ds = None"<<"\n";
     strOut<<"    return str_error"<<"\n";
     strOut<<""<<"\n";
