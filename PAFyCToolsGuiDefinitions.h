@@ -93,7 +93,7 @@
 //#define PAFYCTOOLSGUI_COMMAND_PLPPC_PF "Plants location from photogrammetric point cloud: 3. Plants frame"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PF "Automatic vines detection using a geometric approach: 3. Plants frame"
 //#define PAFYCTOOLSGUI_COMMAND_PLPPC_PF_HELP_PDF_FILE "PlantsLocationFromPhotogrammetricPointCloud_2_PlantsFrame.pdf"
-#define PAFYCTOOLSGUI_COMMAND_PLPPC_PF_HELP_PDF_FILE "AutomaticVinesDetectionUsingAGeometricApproach_2_PlantsFrame.pdf"
+#define PAFYCTOOLSGUI_COMMAND_PLPPC_PF_HELP_PDF_FILE "AutomaticVinesDetectionUsingAGeometricApproach_3_PlantsFrame.pdf"
 #define PAFYCTOOLSGUI_COMMAND_PLPPC_PF_PROCESS_FILE "3_plppc_plants_frame.bat"
 //#define PAFYCTOOLSGUI_COMMAND_PLPPC_PF_TAG_INPUT_PATH "PLPPC_PF_InputPath"
 //#define PAFYCTOOLSGUI_COMMAND_PLPPC_PF_TAG_CRS_EPSG_CODE "PLPPC_PF_CRS_EPSG_CODE"
@@ -213,6 +213,7 @@
 #define PAFYCTOOLSGUI_COMMAND_SZBR_MINIMUM_CLASSIFIED_AREA "SZBR_MinimumClassifiedArea"
 #define PAFYCTOOLSGUI_COMMAND_SZBR_MINIMUM_EXPLAINED_VARIANCE "SZBR_MinimumExplainedVariance"
 #define PAFYCTOOLSGUI_COMMAND_SZBR_BANDS_TO_USE "SZBR_BandsToUse"
+#define PAFYCTOOLSGUI_COMMAND_SZBR_OUTPUT_PATH "SZBR_OutputPath"
 
 
 #endif // PAFYCTOOLSGUIDEFINITIONS_H
