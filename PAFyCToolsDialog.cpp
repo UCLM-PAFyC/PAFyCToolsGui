@@ -4016,7 +4016,7 @@ bool PAFyCToolsDialog::process_szbr(QString &qgisPath,
     }
     ptrParameter->getValue(strValue);
     strValue=strValue.trimmed();
-    if(!auxDir.exists(strValue))
+    if(!strValue.isEmpty())
     {
         if(!auxDir.mkpath(strValue))
         strError=functionName;
@@ -4088,12 +4088,10 @@ bool PAFyCToolsDialog::process_szbr(QString &qgisPath,
     strOut<<"--only_one_principal_component "<<strUseOnlyOnePrincipalComponent<<" ";
     strOut<<"--max_number_of_kmeans_clusters "<<QString::number(maximumNumberOfClustersForKmeans)<<" ";
     strOut<<"--minimum_classification_area "<<QString::number(minimumClassificationArea,'f',2)<<" ";
-    strOut<<"--output_path ";
+    strOut<<"--output_path \"";
     if(!resultsPath.isEmpty())
-        strOut<<QString::number(minimumClassificationArea,'f',2);
-    else
-        strOut<<"\"\"";
-    strOut<<" ";
+        strOut<<resultsPath;
+    strOut<<"\"";
     file.close();
 
     //    mFilesToRemove.push_back(processFileName);
@@ -6597,7 +6595,7 @@ bool PAFyCToolsDialog::writePythonProgramSoilZoningBasedInReflectivity(QString p
     strOut<<"    if not output_path:"<<"\n";
     strOut<<"        output_path = os.path.dirname(os.path.abspath(input_raster))"<<"\n";
     strOut<<"    raster_base_name = os.path.basename(input_raster).split('.')[0]"<<"\n";
-    strOut<<"    output_raster = output_path + '\\' + raster_base_name"<<"\n";
+    strOut<<"    output_raster = output_path + '\\\\' + raster_base_name"<<"\n";
     strOut<<"    #output_raster = os.path.splitext(input_raster)[0]"<<"\n";
     strOut<<"    output_raster = output_raster + \"_rois\""<<"\n";
     strOut<<"    output_raster = output_raster + os.path.splitext(input_raster)[1]"<<"\n";
@@ -6681,7 +6679,7 @@ bool PAFyCToolsDialog::writePythonProgramSoilZoningBasedInReflectivity(QString p
     strOut<<"                        help=\"Maximum number of clusters in Kmeans classification process\")"<<"\n";
     strOut<<"    parser.add_argument(\"--minimum_classification_area\", type=float,"<<"\n";
     strOut<<"                        help=\"Minimum classification area, in meters\")"<<"\n";
-    strOut<<"    parser.add_argument(\"\"--output_path\", type=str,"<<"\n";
+    strOut<<"    parser.add_argument(\"--output_path\", type=str,"<<"\n";
     strOut<<"                        help=\"Output path or empty for multispectral orthomosaic path\")"<<"\n";
     strOut<<"    args = parser.parse_args()"<<"\n";
     strOut<<"    if not args.input_orthomosaic:"<<"\n";
@@ -6747,7 +6745,7 @@ bool PAFyCToolsDialog::writePythonProgramSoilZoningBasedInReflectivity(QString p
     strOut<<"    output_path = args.output_path"<<"\n";
     strOut<<"    if output_path:"<<"\n";
     strOut<<"        if not exists(output_path):"<<"\n";
-    strOut<<"            print(\"Error:\nOutput path does not exists:\n{}\".format(output_path))"<<"\n";
+    strOut<<"            print(\"Error:\\nOutput path does not exists:\\n{}\".format(output_path))"<<"\n";
     strOut<<"            return"<<"\n";
     strOut<<"    if input_rois_shp:"<<"\n";
     strOut<<"        str_error, input_orthomosaic_rois = clip_raster(input_orthomosaic,"<<"\n";
