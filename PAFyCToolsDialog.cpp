@@ -4112,6 +4112,412 @@ bool PAFyCToolsDialog::process_szbr(QString &qgisPath,
     return(true);
 }
 
+bool PAFyCToolsDialog::process_mfha(QString &qgisPath, QString &outputPath, QString &strError)
+{
+    mFilesToRemove.clear();
+    QString command=PAFYCTOOLSGUI_COMMAND_MFHA;
+    QString functionName=QObject::tr("Proccessing command:\n%1").arg(command);
+    QString strValue,parameterCode,inputOrthomosaic,inputShapefile;
+    QString strFactorToReflectance,strBandsToUse,strUseOnlyOnePrincipalComponent;
+    QString strAuxError,dateFormat,dateFromOrthomosaicFileStringSeparator,strGridSpacing;
+    int intValue,noDataValue,redBandPosition,nirBandPosition,numberOfClusters;
+    double dblValue,minimumNdvi,minimumExplainedVariance,factorToReflectance;
+    double gridSpacing;
+    QString strWeightFactorByCluster;
+    bool okToNumber,dateFromOrthomosaciFile;
+    bool okToInt,okToDbl;
+    Parameter* ptrParameter=NULL;
+    QDir auxDir=QDir::currentPath();
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_INPUT_ORTHOMOSAIC;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    inputOrthomosaic=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_ORTHOMOSAIC_NO_DATA_VALUE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToInt=false;
+    noDataValue=strValue.toInt(&okToInt);
+    if(!okToInt)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_GRID_SPACING;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    gridSpacing=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    strGridSpacing=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_FACTOR_TO_REFLECTANCE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    factorToReflectance=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    strFactorToReflectance=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_INPUT_SHAPEFILE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!QFile::exists(strValue))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists file:\n%2")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    inputShapefile=strValue;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_BANDS_TO_USE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    QStringList strValues=strValue.split(";");
+    if(strValues.size()<1)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a list of integers separated by ;")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    for(int i=0;i<strValues.size();i++)
+    {
+        strValue=strValues.at(i);
+        okToInt=false;
+        int intValue=strValue.toInt(&okToInt);
+        if(!okToInt)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a list of integers separated by ;")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        if(i>0)
+            strBandsToUse+=" ";
+        strBandsToUse+=QString::number(intValue);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_QUALITY_FACTOR_BY_CLUSTER;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    strValues=strValue.split(";");
+    if(strValues.size()<1)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a list of doubles separated by ;")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    numberOfClusters=0;
+    strWeightFactorByCluster="";
+    for(int i=0;i<strValues.size();i++)
+    {
+        strValue=strValues.at(i);
+        okToInt=false;
+        double dblValue=strValue.toInt(&okToDbl);
+        if(!okToDbl)
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a list of doubles separated by ;")
+                    .arg(parameterCode).arg(strValue);
+            return(false);
+        }
+        if(i>0)
+            strWeightFactorByCluster+=" ";
+        strWeightFactorByCluster+=QString::number(dblValue);
+        numberOfClusters++;
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_RED_BAND_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToInt=false;
+    redBandPosition=strValue.toInt(&okToInt);
+    if(!okToInt)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_NIR_BAND_POSITION;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToInt=false;
+    nirBandPosition=strValue.toInt(&okToInt);
+    if(!okToInt)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not an integer")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_VEGETATION_MINIMUM_NDVI;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    minimumNdvi=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_MINIMUM_EXPLAINED_VARIANCE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    minimumExplainedVariance=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+    minimumExplainedVariance=minimumExplainedVariance/100.;
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_USE_ONLY_ONE_PRINCIPAL_COMPONENT;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+
+    if(strValue.compare("True",Qt::CaseInsensitive)==0)
+        strUseOnlyOnePrincipalComponent="1";
+    else
+        strUseOnlyOnePrincipalComponent="0";
+
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_OUTPUT_PATH;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    if(!strValue.isEmpty())
+    {
+        if(!auxDir.mkpath(strValue))
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nnot exists path:\n%2")
+                .arg(parameterCode).arg(strValue);
+        strError+=QObject::tr("\nand is not possible make it");
+        return(false);
+    }
+    QString resultsPath=strValue;
+
+    mPythonFiles.clear();
+    QString pythonFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_MFHA_PYTHON_FILE;
+    if(!writePythonProgramMonitoringFloraAtHighAltitude(pythonFileName,
+                                                        strAuxError))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nError writting python file:\n%1").arg(strAuxError);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    mPythonFiles.append(pythonFileName);
+
+    QString processFileName=outputPath+"/"+PAFYCTOOLSGUI_COMMAND_MFHA_PROCESS_FILE;
+    if(QFile::exists(processFileName))
+    {
+        if(!QFile::remove(processFileName))
+        {
+            strError=functionName;
+            strError+=QObject::tr("\nHa fallado la eliminación del fichero:\n%1").arg(processFileName);
+            QFile::remove(pythonFileName);
+            return(false);
+        }
+    }
+    QFile file(processFileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nHa fallado la apertura del fichero:\n%1").arg(processFileName);
+        QFile::remove(pythonFileName);
+        return(false);
+    }
+    QTextStream strOut(&file);
+
+    /*
+    --input_orthomosaic "D:/PAFyCToolsGui/20241218_Cebreros/20240814_Cebreros_25830.tif"
+    --no_data_value -32767 --input_rois_shp "D:/PAFyCToolsGui/20241218_Cebreros/cebreros_mfha_roi.shp"
+    --factor_to_reflectance 3.051757812500000e-05 --bands_to_use 1 2 4 5 6 --red_band_number 4
+    --nir_band_number 6 --minimum_ndvi 0.2 --minimum_explained_variance 0.8
+    --only_one_principal_component 1 --weight_factor_by_cluster 1.0 2.0 3.0 4.0 --grid_spacing 1.0
+    --output_path "D:/PAFyCToolsGui/20241218_Cebreros/output"
+    */
+    strOut<<"echo off"<<"\n";
+    strOut<<"set PROCESS_PATH="<<outputPath<<"\n";
+    strOut<<"set OSGEO4W_ROOT="<<qgisPath<<"\n";
+    strOut<<"set TOOL="<<pythonFileName<<"\n";
+    strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
+    strOut<<"call \"%OSGEO4W_ROOT%\\bin\\o4w_env.bat\""<<"\n";
+    strOut<<"python %TOOL% ";
+    strOut<<"--input_orthomosaic \""<<inputOrthomosaic<<"\" ";
+    strOut<<"--no_data_value "<<QString::number(noDataValue)<<" ";
+    strOut<<"--input_rois_shp \""<<inputShapefile<<"\" ";
+    strOut<<"--factor_to_reflectance  "<<strFactorToReflectance<<" ";
+    strOut<<"--bands_to_use "<<strBandsToUse<<" ";
+    strOut<<"--red_band_number "<<QString::number(redBandPosition)<<" ";
+    strOut<<"--nir_band_number "<<QString::number(nirBandPosition)<<" ";
+    strOut<<"--minimum_ndvi "<<QString::number(minimumNdvi,'f',2)<<" ";
+    strOut<<"--minimum_explained_variance "<<QString::number(minimumExplainedVariance,'f',1)<<" ";
+    strOut<<"--only_one_principal_component "<<strUseOnlyOnePrincipalComponent<<" ";
+    strOut<<"--weight_factor_by_cluster "<<strWeightFactorByCluster<<" ";
+    strOut<<"--grid_spacing "<<strGridSpacing<<" ";
+    strOut<<"--output_path \"";
+    if(!resultsPath.isEmpty())
+        strOut<<resultsPath;
+    strOut<<"\"";
+    file.close();
+
+    //    mFilesToRemove.push_back(processFileName);
+
+    QStringList parameters;
+    mStrExecution=processFileName;
+    if(mPtrProgressExternalProcessDialog==NULL)
+    {
+        mPtrProgressExternalProcessDialog=new ProcessTools::ProgressExternalProcessDialog(true,this);
+        mPtrProgressExternalProcessDialog->setAutoCloseWhenFinish(false);
+    }
+    mPtrProgressExternalProcessDialog->setDialogTitle(command);
+    connect(mPtrProgressExternalProcessDialog, SIGNAL(dialog_closed()),this,SLOT(on_ProgressExternalProcessDialog_closed()));
+
+    mInitialDateTime=QDateTime::currentDateTime();
+    mProgressExternalProcessTitle=command;
+    mPtrProgressExternalProcessDialog->runExternalProcess(mStrExecution,parameters,mBasePath);
+
+    return(true);
+}
+
 bool PAFyCToolsDialog::removeDir(QString dirName, bool onlyContent)
 {
     bool result = true;
@@ -6786,6 +7192,13 @@ bool PAFyCToolsDialog::writePythonProgramSoilZoningBasedInReflectivity(QString p
     return(true);
 }
 
+bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString pythonFileName,
+                                                                       QString &strError)
+{
+
+    return(true);
+}
+
 void PAFyCToolsDialog::on_qgisPathPushButton_clicked()
 {
     QString functionName="on_qgisPathPushButton_clicked";
@@ -7304,6 +7717,17 @@ void PAFyCToolsDialog::on_processPushButton_clicked()
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_SZBR,Qt::CaseInsensitive)==0)
     {
         if(!process_szbr(qgisPath,outputPath,strAuxError))
+        {
+            QString title=PAFYCTOOLSGUI_TITLE;
+            QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")
+                    .arg(command).arg(strAuxError);
+            QMessageBox::information(this,title,msg);
+            return;
+        }
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_MFHA,Qt::CaseInsensitive)==0)
+    {
+        if(!process_mfha(qgisPath,outputPath,strAuxError))
         {
             QString title=PAFYCTOOLSGUI_TITLE;
             QString msg=QObject::tr("Processing commad:\n%1\nerror:\n%2")

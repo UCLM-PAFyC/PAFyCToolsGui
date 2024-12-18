@@ -10,6 +10,7 @@
 
 #define IPYPROJECT_LICENSE_INITIAL_DATE      "2016:01:01"
 #define IPYPROJECT_LICENSE_FINAL_DATE        "2025:06:30"
+//#define IPYPROJECT_LICENSE_FINAL_DATE        "2024:11:14"
 
 #include <ILicenseManager.h>
 void initialize(bool &isInitialized,
