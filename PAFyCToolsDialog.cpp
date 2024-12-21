@@ -4122,7 +4122,7 @@ bool PAFyCToolsDialog::process_mfha(QString &qgisPath, QString &outputPath, QStr
     QString strAuxError,dateFormat,dateFromOrthomosaicFileStringSeparator,strGridSpacing;
     int intValue,noDataValue,redBandPosition,nirBandPosition,numberOfClusters;
     double dblValue,minimumNdvi,minimumExplainedVariance,factorToReflectance;
-    double gridSpacing;
+    double gridSpacing,minimumNirReflectance;
     QString strWeightFactorByCluster;
     bool okToNumber,dateFromOrthomosaciFile;
     bool okToInt,okToDbl;
@@ -4372,6 +4372,27 @@ bool PAFyCToolsDialog::process_mfha(QString &qgisPath, QString &outputPath, QStr
         return(false);
     }
 
+    parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_VEGETATION_MINIMUM_NIR_REFLECTANCE;
+    ptrParameter=mPtrParametersManager->getParameter(parameterCode);
+    if(ptrParameter==NULL)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nNot exists parameter: %1 in file:\n%2")
+                .arg(parameterCode).arg(mPtrParametersManager->getFileName());
+        return(false);
+    }
+    ptrParameter->getValue(strValue);
+    strValue=strValue.trimmed();
+    okToDbl=false;
+    minimumNirReflectance=strValue.toDouble(&okToDbl);
+    if(!okToDbl)
+    {
+        strError=functionName;
+        strError+=QObject::tr("\nFor parameter: %1\nvalue: %2 is not a double")
+                .arg(parameterCode).arg(strValue);
+        return(false);
+    }
+
     parameterCode=PAFYCTOOLSGUI_COMMAND_MFHA_MINIMUM_EXPLAINED_VARIANCE;
     ptrParameter=mPtrParametersManager->getParameter(parameterCode);
     if(ptrParameter==NULL)
@@ -4470,7 +4491,7 @@ bool PAFyCToolsDialog::process_mfha(QString &qgisPath, QString &outputPath, QStr
     --input_orthomosaic "D:/PAFyCToolsGui/20241218_Cebreros/20240814_Cebreros_25830.tif"
     --no_data_value -32767 --input_rois_shp "D:/PAFyCToolsGui/20241218_Cebreros/cebreros_mfha_roi.shp"
     --factor_to_reflectance 3.051757812500000e-05 --bands_to_use 1 2 4 5 6 --red_band_number 4
-    --nir_band_number 6 --minimum_ndvi 0.2 --minimum_explained_variance 0.8
+    --nir_band_number 6 --minimum_ndvi 0.2 --minimum_nir_reflectance 0.3 --minimum_explained_variance 0.8
     --only_one_principal_component 1 --weight_factor_by_cluster 1.0 2.0 3.0 4.0 --grid_spacing 1.0
     --output_path "D:/PAFyCToolsGui/20241218_Cebreros/output"
     */
@@ -4489,6 +4510,7 @@ bool PAFyCToolsDialog::process_mfha(QString &qgisPath, QString &outputPath, QStr
     strOut<<"--red_band_number "<<QString::number(redBandPosition)<<" ";
     strOut<<"--nir_band_number "<<QString::number(nirBandPosition)<<" ";
     strOut<<"--minimum_ndvi "<<QString::number(minimumNdvi,'f',2)<<" ";
+    strOut<<"--minimum_nir_reflectance "<<QString::number(minimumNirReflectance,'f',2)<<" ";
     strOut<<"--minimum_explained_variance "<<QString::number(minimumExplainedVariance,'f',1)<<" ";
     strOut<<"--only_one_principal_component "<<strUseOnlyOnePrincipalComponent<<" ";
     strOut<<"--weight_factor_by_cluster "<<strWeightFactorByCluster<<" ";
