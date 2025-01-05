@@ -4306,7 +4306,7 @@ bool PAFyCToolsDialog::process_mfha(QString &qgisPath, QString &outputPath, QStr
         }
         if(i>0)
             strWeightFactorByCluster+=" ";
-        strWeightFactorByCluster+=QString::number(dblValue);
+        strWeightFactorByCluster+=QString::number(dblValue,'f',6);
         numberOfClusters++;
     }
 
