@@ -8026,12 +8026,6 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"    if not args.weight_factor_by_cluster:"<<"\n";
     strOut<<"        parser.print_help()"<<"\n";
     strOut<<"    weight_factor_by_cluster = args.weight_factor_by_cluster"<<"\n";
-    strOut<<"    if not args.input_dsm:"<<"\n";
-    strOut<<"        parser.print_help()"<<"\n";
-    strOut<<"        return"<<"\n";
-    strOut<<"    if not args.input_dtm:"<<"\n";
-    strOut<<"        parser.print_help()"<<"\n";
-    strOut<<"        return"<<"\n";
     strOut<<"    if args.crop_minimum_height == None:"<<"\n";
     strOut<<"        parser.print_help()"<<"\n";
     strOut<<"        return"<<"\n";
@@ -8039,6 +8033,12 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"    input_dsm = ''"<<"\n";
     strOut<<"    input_dtm = ''"<<"\n";
     strOut<<"    if crop_minimum_height > 0.0:"<<"\n";
+    strOut<<"        if not args.input_dsm:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
+    strOut<<"        if not args.input_dtm:"<<"\n";
+    strOut<<"            parser.print_help()"<<"\n";
+    strOut<<"            return"<<"\n";
     strOut<<"        input_dsm = args.input_dsm"<<"\n";
     strOut<<"        if not exists(input_dsm):"<<"\n";
     strOut<<"            print(\"Error:\\nInput DSM does not exists:\\n{}\".format(input_dsm))"<<"\n";
