@@ -8038,7 +8038,7 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"            return"<<"\n";
     strOut<<"        if not args.input_dtm:"<<"\n";
     strOut<<"            parser.print_help()"<<"\n";
-    strOut<<"            return"<<"\n";
+    strOut<<"            return"<<"\n"; // help
     strOut<<"        input_dsm = args.input_dsm"<<"\n";
     strOut<<"        if not exists(input_dsm):"<<"\n";
     strOut<<"            print(\"Error:\\nInput DSM does not exists:\\n{}\".format(input_dsm))"<<"\n";
