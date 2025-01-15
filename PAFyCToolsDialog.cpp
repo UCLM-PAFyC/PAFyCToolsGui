@@ -7412,7 +7412,7 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"    dtm_lry = None"<<"\n";
     strOut<<"    dtm_geotransform = None"<<"\n";
     strOut<<"    dtm_data = None"<<"\n";
-    strOut<<"    if crop_minimum_height > 0.0:"<<"\n";
+    strOut<<"    if crop_minimum_height > 0.001 or crop_minimum_height < -0.001:"<<"\n";
     strOut<<"        if not exists(input_dsm):"<<"\n";
     strOut<<"            str_error = \"Function process\""<<"\n";
     strOut<<"            str_error += \"\\nNot exists file: {}\".format(input_dsm)"<<"\n";
@@ -7565,7 +7565,7 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"            if ndvi_value < minimum_ndvi:"<<"\n";
     strOut<<"                invalid_indexes.append(index)"<<"\n";
     strOut<<"                continue"<<"\n";
-    strOut<<"            if crop_minimum_height > 0.0:"<<"\n";
+    strOut<<"            if crop_minimum_height > 0.001 or crop_minimum_height < -0.001:"<<"\n";
     strOut<<"                x_coord = column * gsd_x + ulx + (gsd_x / 2.)  # add half the cell size"<<"\n";
     strOut<<"                y_coord = uly - row * gsd_y - (gsd_y / 2.)  # to centre the point"<<"\n";
     strOut<<"                x_coord_dsm = x_coord"<<"\n";
@@ -7592,7 +7592,10 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"                    continue"<<"\n";
     strOut<<"                dtm_height = dtm_data[dtm_row][dtm_column]"<<"\n";
     strOut<<"                crop_height = dsm_height - dtm_height"<<"\n";
-    strOut<<"                if crop_height < crop_minimum_height:"<<"\n";
+    strOut<<"                if crop_minimum_height > 0.001 and crop_height < crop_minimum_height:"<<"\n";
+    strOut<<"                    invalid_indexes.append(index)"<<"\n";
+    strOut<<"                    continue"<<"\n";
+    strOut<<"                elif crop_minimum_height < 0.001 and crop_height > crop_minimum_height:"<<"\n";
     strOut<<"                    invalid_indexes.append(index)"<<"\n";
     strOut<<"                    continue"<<"\n";
     strOut<<"            valid_indexes.append(index)"<<"\n";
@@ -7834,6 +7837,8 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"                                                + output_grid_by_column_by_row[grid_column][grid_row][n_cluster])"<<"\n";
     strOut<<"            # fraction_cover = (number_of_pixels_in_clusters * xSize * ySize) / (grid_spacing * grid_spacing) * 100."<<"\n";
     strOut<<"            fraction_cover = ( number_of_pixels_in_clusters / number_of_pixels_in_grid ) * 100."<<"\n";
+    strOut<<"            if fraction_cover > 100.:"<<"\n";
+    strOut<<"                fraction_cover = 100."<<"\n";
     strOut<<"            feature.SetField(\"frac_cover\", fraction_cover)"<<"\n";
     strOut<<"            index = 0."<<"\n";
     strOut<<"            for n_cluster in output_grid_by_column_by_row[grid_column][grid_row]:"<<"\n";
@@ -7843,6 +7848,8 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"                percentage_pixels_in_cluster = float((output_grid_by_column_by_row[grid_column][grid_row][n_cluster]"<<"\n";
     strOut<<"                                                / number_of_pixels_in_grid ) * 100.)"<<"\n";
     strOut<<"                index_in_cluster = float(weight_factor_by_cluster[ordered_cluster] * percentage_pixels_in_cluster)"<<"\n";
+    strOut<<"                if percentage_pixels_in_cluster > 100.:"<<"\n";
+    strOut<<"                    percentage_pixels_in_cluster = 100."<<"\n";
     strOut<<"                index = index + index_in_cluster"<<"\n";
     strOut<<"                cluster_percentage_field_name = \"cl_fc_\" + str(ordered_cluster + 1)"<<"\n";
     strOut<<"                cluster_index_field_name = \"cl_idx_\" + str(ordered_cluster + 1)"<<"\n";
@@ -7962,7 +7969,7 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"    parser.add_argument(\"--input_dtm\", dest=\"input_dtm\", action=\"store\", type=str,"<<"\n";
     strOut<<"                        help=\"DTM geotiff, or '' for no use it, crop_minimum_height == 0.0\", default=None)"<<"\n";
     strOut<<"    parser.add_argument(\"--crop_minimum_height, or 0.0 for no use it\", dest=\"crop_minimum_height\", action=\"store\", type=float,"<<"\n";
-    strOut<<"                        help=\"Crop minimum height, in meters\", default=None)"<<"\n";
+    strOut<<"                        help=\"Crop minimum height, in meters, positive for vegetation over value and negative for vegetation below value\", default=None)"<<"\n";
     strOut<<"    parser.add_argument(\"--output_path\", type=str,"<<"\n";
     strOut<<"                        help=\"Output path or empty for multispectral orthomosaic path\")"<<"\n";
     strOut<<"    args = parser.parse_args()"<<"\n";
@@ -8032,7 +8039,7 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"    crop_minimum_height = args.crop_minimum_height"<<"\n";
     strOut<<"    input_dsm = ''"<<"\n";
     strOut<<"    input_dtm = ''"<<"\n";
-    strOut<<"    if crop_minimum_height > 0.0:"<<"\n";
+    strOut<<"    if crop_minimum_height > 0.001 or crop_minimum_height < -0.001:"<<"\n";
     strOut<<"        if not args.input_dsm:"<<"\n";
     strOut<<"            parser.print_help()"<<"\n";
     strOut<<"            return"<<"\n";
