@@ -7595,7 +7595,7 @@ bool PAFyCToolsDialog::writePythonProgramMonitoringFloraAtHighAltitude(QString p
     strOut<<"                if crop_minimum_height > 0.001 and crop_height < crop_minimum_height:"<<"\n";
     strOut<<"                    invalid_indexes.append(index)"<<"\n";
     strOut<<"                    continue"<<"\n";
-    strOut<<"                elif crop_minimum_height < 0.001 and crop_height > crop_minimum_height:"<<"\n";
+    strOut<<"                elif crop_minimum_height < 0.001 and crop_height > (-1. * crop_minimum_height):"<<"\n";
     strOut<<"                    invalid_indexes.append(index)"<<"\n";
     strOut<<"                    continue"<<"\n";
     strOut<<"            valid_indexes.append(index)"<<"\n";
