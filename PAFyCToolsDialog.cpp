@@ -4878,6 +4878,7 @@ bool PAFyCToolsDialog::writePythonProgramCropsCharacterizationFromPhotogrammetri
     strOut<<"    in_layer_definition = in_layer.GetLayerDefn()"<<"\n";
     strOut<<"    number_of_features = in_layer.GetFeatureCount()"<<"\n";
     strOut<<"    cont_feature = 0"<<"\n";
+    strOut<<"    in_layer.ResetReading()"<<"\n";
     strOut<<"    for feature in in_layer:"<<"\n";
     strOut<<"        cont_feature = cont_feature + 1"<<"\n";
     strOut<<"        print('Processing plant: {}, of {}'.format(str(cont_feature),"<<"\n";
@@ -5368,6 +5369,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"    cont_feature = 0"<<"\n";
     strOut<<"    input_values = []"<<"\n";
     strOut<<"    position_in_input_values_by_feature_position = {}"<<"\n";
+    strOut<<"    in_layer.ResetReading()"<<"\n";
     strOut<<"    for feature in in_layer:"<<"\n";
     strOut<<"        value = feature.GetFieldAsDouble(input_field_id_index)"<<"\n";
     strOut<<"        if value >= crop_minimum_value:"<<"\n";
@@ -5397,6 +5399,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"                center_min_value = centers[i]"<<"\n";
     strOut<<"                pos_center_min_value = i"<<"\n";
     strOut<<"        cont_feature = 0"<<"\n";
+    strOut<<"        in_layer.ResetReading()"<<"\n";
     strOut<<"        for feature in in_layer:"<<"\n";
     strOut<<"            damaged = 0"<<"\n";
     strOut<<"            if not cont_feature in position_in_input_values_by_feature_position:"<<"\n";
@@ -5421,6 +5424,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"                break"<<"\n";
     strOut<<"            number_of_damages = number_of_damages + 1"<<"\n";
     strOut<<"        cont_feature = 0"<<"\n";
+    strOut<<"        in_layer.ResetReading()"<<"\n";
     strOut<<"        for feature in in_layer:"<<"\n";
     strOut<<"            damaged = 0"<<"\n";
     strOut<<"            if not cont_feature in position_in_input_values_by_feature_position:"<<"\n";
@@ -5548,7 +5552,6 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"    cont_feature = 0"<<"\n";
     strOut<<"    input_values = []"<<"\n";
     strOut<<"    position_in_input_values_by_feature_position = {}"<<"\n";
-
     strOut<<"    output_field_name = str_date"<<"\n";
     strOut<<"    output_field_name = output_field_name + '_' + 'dn'"<<"\n";
     strOut<<"    if kmeans_clusters > -1:"<<"\n";
@@ -5567,6 +5570,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"    output_field_ndvi_id_index = in_layer_definition.GetFieldIndex(output_field_ndvi_name)"<<"\n";
     strOut<<"    if output_field_ndvi_id_index == -1:"<<"\n";
     strOut<<"        in_layer.CreateField(ogr.FieldDefn(output_field_ndvi_name, ogr.OFTReal))"<<"\n";
+    strOut<<"    in_layer.ResetReading()"<<"\n";
     strOut<<"    for feature in in_layer:"<<"\n";
     strOut<<"        print('Processing plant: {}, of {}'.format(str(cont_feature + 1),"<<"\n";
     strOut<<"                                                   str(number_of_features)))"<<"\n";
@@ -5584,10 +5588,12 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"        if orthomosaic_poly.Within(plot_geometry_full):"<<"\n";
     strOut<<"            plot_geometry = orthomosaic_poly"<<"\n";
     strOut<<"        if not plot_geometry:"<<"\n";
+    strOut<<"            cont_feature = cont_feature + 1"<<"\n";
     strOut<<"            continue"<<"\n";
     strOut<<"        plot_geometry = plot_geometry_full.Intersection(orthomosaic_poly)"<<"\n";
     strOut<<"        plot_geometry_area = plot_geometry.GetArea()"<<"\n";
     strOut<<"        if plot_geometry_area < (3 * orthomosaic_pixel_area):"<<"\n";
+    strOut<<"            cont_feature = cont_feature + 1"<<"\n";
     strOut<<"            continue"<<"\n";
     strOut<<"        geom_points_x = []"<<"\n";
     strOut<<"        geom_points_y = []"<<"\n";
@@ -5609,6 +5615,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"                geom_points_y.append(sc)"<<"\n";
     strOut<<"        else:"<<"\n";
     strOut<<"            # sys.exit(\"ERROR: Geometry needs to be either Polygon or Multipolygon\")"<<"\n";
+    strOut<<"            cont_feature = cont_feature + 1"<<"\n";
     strOut<<"            continue"<<"\n";
     strOut<<"        plot_geom_x_min = min(geom_points_x)"<<"\n";
     strOut<<"        plot_geom_x_max = max(geom_points_x)"<<"\n";
@@ -5732,6 +5739,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"                center_min_value = centers[i]"<<"\n";
     strOut<<"                pos_center_min_value = i"<<"\n";
     strOut<<"        cont_feature = 0"<<"\n";
+    strOut<<"        in_layer.ResetReading()"<<"\n";
     strOut<<"        for feature in in_layer:"<<"\n";
     strOut<<"            damaged = 0"<<"\n";
     strOut<<"            ndvi = -1"<<"\n";
@@ -5759,6 +5767,7 @@ bool PAFyCToolsDialog::writePythonProgramCropMonitoringFromPhotogrammetricGeomat
     strOut<<"                break"<<"\n";
     strOut<<"            number_of_damages = number_of_damages + 1"<<"\n";
     strOut<<"        cont_feature = 0"<<"\n";
+    strOut<<"        in_layer.ResetReading()"<<"\n";
     strOut<<"        for feature in in_layer:"<<"\n";
     strOut<<"            damaged = 0"<<"\n";
     strOut<<"            ndvi = -1"<<"\n";
@@ -6382,6 +6391,7 @@ bool PAFyCToolsDialog::writePythonProgramCropWaterStressIndexUsingThermalOrthomo
     strOut<<"    VPD = es - ea"<<"\n";
     strOut<<"    dTul = upper_line_coef_a * VPD + upper_line_coef_b"<<"\n";
     strOut<<"    dTll = lower_line_coef_a * VPD + lower_line_coef_b"<<"\n";
+    strOut<<"    in_layer.ResetReading()"<<"\n";
     strOut<<"    for feature in in_layer:"<<"\n";
     strOut<<"        print('Processing plant: {}, of {}'.format(str(cont_feature + 1),"<<"\n";
     strOut<<"                                                   str(number_of_features)))"<<"\n";
