@@ -900,7 +900,10 @@ bool PAFyCToolsDialog::process_plppc_pp(QString &qgisPath,
         strOut<<"lasheight64 -v -i temp_tiles_ground_thinned_denoise\\tile*.laz ^"<<"\n";
         strOut<<"          -ignore_class 2 -classify_below %VINE_H_IGNORE_FOOT% 0 ^"<<"\n";
         strOut<<"          -classify_between %VINE_H_TRUNK_MINIMUM_HEIGHT% %VINE_H_TRUNK_MAXIMUM_HEIGHT% 3 ^"<<"\n";
-        strOut<<"          -classify_between %VINE_H_ARMS_MINIMUM_HEIGHT% %VINE_H_ARMS_MAXIMUM_HEIGHT% 4 ^"<<"\n";
+        // mamh 20251007
+        strOut<<"          -classify_between %VINE_TRUNK_BASE_MAXIMUM_HEIGHT% %VINE_TRUNK_HIGHER_MINIMUM_HEIGHT% 5 ^"<<"\n";
+//        strOut<<"          -classify_between %VINE_H_ARMS_MINIMUM_HEIGHT% %VINE_H_ARMS_MAXIMUM_HEIGHT% 4 ^"<<"\n";
+        strOut<<"          -classify_between %VINE_TRUNK_HIGHER_MINIMUM_HEIGHT% %VINE_TRUNK_HIGHER_MAXIMUM_HEIGHT% 4 ^"<<"\n";
         strOut<<"          -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^"<<"\n";
         strOut<<"          -odir temp_tiles_ground_thinned_denoise_height -olaz ^"<<"\n";
         strOut<<"          -cores %CORES%"<<"\n";
@@ -1600,6 +1603,9 @@ bool PAFyCToolsDialog::process_plppc_pp_pwol(QString &qgisPath,
         strOut<<"lasheight64 -v -i temp_tiles_ground_thinned\\tile*.laz ^"<<"\n";
         strOut<<"          -ignore_class 2 -classify_below %VINE_TRUNK_BASE_MINIMUM_HEIGHT% 0 ^"<<"\n";
         strOut<<"          -classify_between %VINE_TRUNK_BASE_MINIMUM_HEIGHT% %VINE_TRUNK_BASE_MAXIMUM_HEIGHT% 3 ^"<<"\n";
+        // mamh 20251007
+        strOut<<"          -classify_between %VINE_TRUNK_BASE_MAXIMUM_HEIGHT% %VINE_TRUNK_HIGHER_MINIMUM_HEIGHT% 5 ^"<<"\n";
+//        strOut<<"          -classify_between %VINE_TRUNK_HIGHER_MINIMUM_HEIGHT% %VINE_TRUNK_HIGHER_MAXIMUM_HEIGHT% 4 ^"<<"\n";
         strOut<<"          -classify_between %VINE_TRUNK_HIGHER_MINIMUM_HEIGHT% %VINE_TRUNK_HIGHER_MAXIMUM_HEIGHT% 4 ^"<<"\n";
         strOut<<"          -classify_above %VINE_H_ARMS_MAXIMUM_HEIGHT% 7 ^"<<"\n";
         strOut<<"          -odir temp_tiles_ground_thinned_height -olaz ^"<<"\n";
@@ -1711,7 +1717,9 @@ bool PAFyCToolsDialog::process_plppc_pp_pwol(QString &qgisPath,
         strOut<<"set DELETE_SHAPEFILE_UNION=%PROCESS_PATH%\\vines_pixels_union.*"<<"\n";
         strOut<<"cd /d \"%PROCESS_PATH%\""<<"\n";
         strOut<<"lasclip64 -i *_ground.laz -poly \"%OUTPUT_SHAPEFILE_PIXELS_UNION%\" -o \"%OUTPUT_FILTER_LAZ%\""<<"\n";
-        strOut<<"lasgrid64 -i \"%OUTPUT_FILTER_LAZ%\" -keep_class 3 -step %VINE_TRUNK_FILTER_RASTER_STEP% -counter_16bit -o \"%VINE_RASTER_TRUNK_FILE_NAME%\""<<"\n";
+        // mamh 2025107
+//        strOut<<"lasgrid64 -i \"%OUTPUT_FILTER_LAZ%\" -keep_class 3 -step %VINE_TRUNK_FILTER_RASTER_STEP% -counter_16bit -o \"%VINE_RASTER_TRUNK_FILE_NAME%\""<<"\n";
+        strOut<<"lasgrid64 -i \"%OUTPUT_FILTER_LAZ%\" -keep_class 5 -step %VINE_TRUNK_FILTER_RASTER_STEP% -counter_16bit -o \"%VINE_RASTER_TRUNK_FILE_NAME%\""<<"\n";
         strOut<<"del \"%DELETE_SHAPEFILE_UNION%\""<<"\n";
         strOut<<"del \"%OUTPUT_FILTER_LAZ%\""<<"\n";
         file.close();
