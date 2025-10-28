@@ -8235,17 +8235,69 @@ void PAFyCToolsDialog::on_helpPushButton_clicked()
         }
     }
     QString pdfFileName=qApp->applicationDirPath() + PAFYCTOOLSGUI_DOCS_PATH;
-    if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PP,Qt::CaseInsensitive)==0)
+    if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL,Qt::CaseInsensitive)==0)
     {
-        pdfFileName+=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_HELP_PDF_FILE;
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_HELP_PDF_FILE;
     }
     else if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PL,Qt::CaseInsensitive)==0)
     {
-        pdfFileName+=PAFYCTOOLSGUI_COMMAND_PLPPC_PL_HELP_PDF_FILE;
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_HELP_PDF_FILE;
     }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_PLPPC_PF,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_PLPPC_PP_PWOL_HELP_PDF_FILE;
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_CCFPGP,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_CCFPGP_HELP_PDF_FILE;
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_CMNDVI,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_CMNDVI_HELP_PDF_FILE;
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_CMGCCVOL,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_CMGCCVOL_HELP_PDF_FILE;
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_CWSITHO,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_CWSITHO_HELP_PDF_FILE;
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_SZBR,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_SZBR_HELP_PDF_FILE;
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_MFHA,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_MFHA_HELP_PDF_FILE;
+    }
+    else if(command.compare(PAFYCTOOLSGUI_COMMAND_BCVRM,Qt::CaseInsensitive)==0)
+    {
+        pdfFileName+=PAFYCTOOLSGUI_COMMAND_BCVRM_HELP_PDF_FILE;
+    }
+//    else if(command.compare(,Qt::CaseInsensitive)==0)
+//    {
+//        pdfFileName+=;
+//    }
+//    else if(command.compare(,Qt::CaseInsensitive)==0)
+//    {
+//        pdfFileName+=;
+//    }
     if(QFile::exists(pdfFileName))
     {
         QDesktopServices::openUrl(QUrl::fromLocalFile(pdfFileName));
+//        QString strExecution=qApp->applicationDirPath() + "/FoxitReader.exe";
+////        QString strExecution="\""+qApp->applicationDirPath() + "\"\\FoxitReader.exe";
+//        if(QFile::exists(strExecution))
+//        {
+//                strExecution+=" \""+pdfFileName+"\"";
+//                QProcess process;
+//                process.start(strExecution);
+//        }
+//        else
+//        {
+//            QDesktopServices::openUrl(QUrl::fromLocalFile(pdfFileName));
+//        }
     }
     else
     {
